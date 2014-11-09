@@ -48,7 +48,9 @@
 (define (ramped-half-and-half popsize maxheight ftable termlist)
   (define (full level maxdepth)
     (if (= level maxdepth)
-      (leaf (random-term termlist))
+      (let ([t1 (random-term termlist)])
+        (match t1 ['x (leaf 'x)]
+                  ['R (leaf (random))])) ;(leaf (random-term termlist))
       (let ([f (random-fn ftable)])
         (match f [(fn sym 1 _) (branch1 sym (full (add1 level) maxdepth))]
                [(fn sym 2 _) (branch2 sym (full (add1 level) maxdepth)
@@ -60,7 +62,8 @@
         (match e1 [(fn sym 1 _) (branch1 sym (grow (add1 level) maxdepth))]
                [(fn sym 2 _) (branch2 sym (grow (add1 level) maxdepth)
                                       (grow (add1 level) maxdepth))]
-               [t1 (leaf t1)]))))
+               ['x (leaf 'x)]
+               ['R (leaf (random))]))))
   (let ([count (/ (/ popsize (- (add1 maxheight) 2)) 2)])
     (apply append (map (lambda (maxdepth)
                          (append (map (lambda (x) (full 0 maxdepth)) (range 0 count))
@@ -73,7 +76,7 @@
 (define (eval-symtree symtree arg ftable)
   (define (f subtree)
     (match subtree [(leaf 'x)         arg]
-                   [(leaf 'R)           0]
+                   [(leaf  r)           r]
                    [(branch1 sym a1)    ((sym->proc sym ftable) (f a1))]
                    [(branch2 sym a1 a2) ((sym->proc sym ftable) (f a1) (f a2))]))
   (f symtree))
