@@ -36,7 +36,7 @@
                            (fn 'mul 2 r-mul)
                            (fn 'div 2 r-div)
                            (fn 'sin 1 r-sin)
-                           (fn 'cos 2 r-cos)
+                           (fn 'cos 1 r-cos)
                            (fn 'exp 2 r-exp)))
 
 (define (random-fn ftable)  (car (shuffle ftable)))
@@ -67,6 +67,18 @@
                                  (map (lambda (x) (grow 0 maxdepth)) (range 0 count))))
                        (range 2 (add1 maxheight))))))
 
+(define (sym->proc sym ftable)
+  (fn-proc (car (filter (lambda (x) (equal? (fn-sym x) sym)) ftable))))
+
+(define (eval-symtree symtree arg ftable)
+  (define (f subtree)
+    (match subtree [(leaf 'x)         arg]
+                   [(leaf 'R)           0]
+                   [(branch1 sym a1)    ((sym->proc sym ftable) (f a1))]
+                   [(branch2 sym a1 a2) ((sym->proc sym ftable) (f a1) (f a2))]))
+  (f symtree))
+
+
 ;; GP Algorithm
 ;; ============
 (define (generic-gp popsize maxheight ftable termlist)
@@ -78,10 +90,9 @@
 ;;         Reproduce a progam by copying it into the new generation
 ;;         create 2 new programs by crossover
 ;;     Designate best program so far
-      initial-population))
+      (eval-symtree (car initial-population) 5 ftable)))
 
 (define (main)
-  (length
-    (generic-gp *pop-size* *max-init-program-size* *func-table* *terminals*)))
+    (generic-gp *pop-size* *max-init-program-size* *func-table* *terminals*))
 
 (main)
