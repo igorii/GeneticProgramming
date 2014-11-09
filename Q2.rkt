@@ -50,7 +50,7 @@
     (if (= level maxdepth)
       (let ([t1 (random-term termlist)])
         (match t1 ['x (leaf 'x)]
-                  ['R (leaf (random))])) ;(leaf (random-term termlist))
+               ['R (leaf (random))])) ;(leaf (random-term termlist))
       (let ([f (random-fn ftable)])
         (match f [(fn sym 1 _) (branch1 sym (full (add1 level) maxdepth))]
                [(fn sym 2 _) (branch2 sym (full (add1 level) maxdepth)
@@ -76,26 +76,26 @@
 (define (eval-symtree symtree arg ftable)
   (define (f subtree)
     (match subtree [(leaf 'x)         arg]
-                   [(leaf  r)           r]
-                   [(branch1 sym a1)    ((sym->proc sym ftable) (f a1))]
-                   [(branch2 sym a1 a2) ((sym->proc sym ftable) (f a1) (f a2))]))
+           [(leaf  r)           r]
+           [(branch1 sym a1)    ((sym->proc sym ftable) (f a1))]
+           [(branch2 sym a1 a2) ((sym->proc sym ftable) (f a1) (f a2))]))
   (f symtree))
 
 
 ;; GP Algorithm
 ;; ============
 (define (generic-gp popsize maxheight ftable termlist)
-;; Generate initial population of random programs
-   (let ([initial-population (ramped-half-and-half popsize maxheight ftable termlist)])
-;; Repeat until termination condition
-;;     Execute each program and assign it a fitness
-;;     Create a new population by applying the following operations to programs selected with fitness based on probability:
-;;         Reproduce a progam by copying it into the new generation
-;;         create 2 new programs by crossover
-;;     Designate best program so far
-      (eval-symtree (car initial-population) 5 ftable)))
+  ;; Generate initial population of random programs
+  (let ([initial-population (ramped-half-and-half popsize maxheight ftable termlist)])
+    ;; Repeat until termination condition
+    ;;     Execute each program and assign it a fitness
+    ;;     Create a new population by applying the following operations to programs selected with fitness based on probability:
+    ;;         Reproduce a progam by copying it into the new generation
+    ;;         create 2 new programs by crossover
+    ;;     Designate best program so far
+    (eval-symtree (car initial-population) 5 ftable)))
 
 (define (main)
-    (generic-gp *pop-size* *max-init-program-size* *func-table* *terminals*))
+  (generic-gp *pop-size* *max-init-program-size* *func-table* *terminals*))
 
 (main)
