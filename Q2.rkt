@@ -13,15 +13,6 @@
 (define (r-cos a)   (cos a))
 (define (r-exp a b) (if (and (= a 0) (< b 0)) 0 (expt a b)))
 
-(struct fn (sym arity proc))
-(define *func-table* (list (fn 'add 2 r-add)
-                           (fn 'sub 2 r-sub)
-                           (fn 'mul 2 r-mul)
-                           (fn 'div 2 r-div)
-                           (fn 'sin 1 r-sin)
-                           (fn 'cos 2 r-cos)
-                           (fn 'exp 2 r-exp)))
-(define *terminals* (list 'x 'R))
 (define *pop-size* 1000)
 (define *success* 20)
 (define *precision* 0.001)
@@ -34,14 +25,23 @@
 (define *max-run-program-size* 17)
 (define *tourny-size* 7)
 (define *elitism* #t)
+(define *terminals* (list 'x 'R))
+
+(struct leaf    (x)       #:transparent)
+(struct branch1 (n a1)    #:transparent)
+(struct branch2 (n a1 a2) #:transparent)
+(struct fn (sym arity proc))
+(define *func-table* (list (fn 'add 2 r-add)
+                           (fn 'sub 2 r-sub)
+                           (fn 'mul 2 r-mul)
+                           (fn 'div 2 r-div)
+                           (fn 'sin 1 r-sin)
+                           (fn 'cos 2 r-cos)
+                           (fn 'exp 2 r-exp)))
 
 (define (random-fn ftable)  (car (shuffle ftable)))
 (define (random-term terms) (car (shuffle terms)))
 (define (random-item ftable terms) (car (shuffle (append ftable terms))))
-
-(struct leaf (x) #:transparent)
-(struct branch1 (n a1) #:transparent)
-(struct branch2 (n a1 a2) #:transparent)
 
 ;; Ramped Half-and-Half
 ;; ====================
@@ -53,7 +53,6 @@
         (match f [(fn sym 1 _) (branch1 sym (full (add1 level) maxdepth))]
                [(fn sym 2 _) (branch2 sym (full (add1 level) maxdepth)
                                       (full (add1 level) maxdepth))]))))
-
   (define (grow level maxdepth)
     (if (= level maxdepth)
       (leaf (random-term termlist))
@@ -62,8 +61,6 @@
                [(fn sym 2 _) (branch2 sym (grow (add1 level) maxdepth)
                                       (grow (add1 level) maxdepth))]
                [t1 (leaf t1)]))))
-
-
   (let ([count (/ (/ popsize (- (add1 maxheight) 2)) 2)])
     (apply append (map (lambda (maxdepth)
                          (append (map (lambda (x) (full 0 maxdepth)) (range 0 count))
@@ -72,16 +69,19 @@
 
 ;; GP Algorithm
 ;; ============
+(define (generic-gp popsize maxheight ftable termlist)
 ;; Generate initial population of random programs
+   (let ([initial-population (ramped-half-and-half popsize maxheight ftable termlist)])
 ;; Repeat until termination condition
 ;;     Execute each program and assign it a fitness
 ;;     Create a new population by applying the following operations to programs selected with fitness based on probability:
 ;;         Reproduce a progam by copying it into the new generation
 ;;         create 2 new programs by crossover
 ;;     Designate best program so far
+      initial-population))
 
 (define (main)
   (length
-  (ramped-half-and-half *pop-size* *max-init-program-size* *func-table* *terminals*)))
+    (generic-gp *pop-size* *max-init-program-size* *func-table* *terminals*)))
 
 (main)
