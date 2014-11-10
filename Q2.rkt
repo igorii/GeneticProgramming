@@ -50,7 +50,7 @@
     (if (= level maxdepth)
       (let ([t1 (random-term termlist)])
         (match t1 ['x (leaf 'x)]
-               ['R (leaf (random))])) ;(leaf (random-term termlist))
+               ['R (leaf (random))]))
       (let ([f (random-fn ftable)])
         (match f [(fn sym 1 _) (branch1 sym (full (add1 level) maxdepth))]
                [(fn sym 2 _) (branch2 sym (full (add1 level) maxdepth)
@@ -81,6 +81,18 @@
            [(branch2 sym a1 a2) ((sym->proc sym ftable) (f a1) (f a2))]))
   (f symtree))
 
+(struct fitcase (input output) #:transparent)
+(define (create-fitness-cases fn minp maxp n)
+  (map (lambda (x) (fitcase x (fn x)))
+    (map (lambda (x) (+ minp (* (- maxp minp) (/ x n))))
+         (range 0 (+ n 1)))))
+
+(define (calc-fit-diiffs fitcases symtree ftable)
+  (map (lambda (x)
+         (let ([rslt (eval-symtree symtree (fitcase-input x) ftable)])
+           (fitcase (fitcase-input x) (abs (- (fitcase-input x) rslt)))))
+       fitcases))
+
 
 ;; GP Algorithm
 ;; ============
@@ -93,9 +105,18 @@
     ;;         Reproduce a progam by copying it into the new generation
     ;;         create 2 new programs by crossover
     ;;     Designate best program so far
-    (eval-symtree (car initial-population) 5 ftable)))
+    ;(eval-symtree 
+    (calc-fit-diiffs (create-fitness-cases (lambda (x) 
+                                             (+ 1
+                                             (+ x
+                                             (+ (expt (* 2 x) 2)
+                                               (expt (* 3 x) 3)))))
+                                           -5.0 5.0 20)
+      (car initial-population) *func-table*))) 
+      ;5 ftable)))
 
 (define (main)
+  ;(create-fitness-cases (lambda (x) x) -5.0 5.0 20))
   (generic-gp *pop-size* *max-init-program-size* *func-table* *terminals*))
 
 (main)
