@@ -1,8 +1,12 @@
 #lang racket
 
 (require racket/match)
+(require plot)
+(plot-new-window? #t)
 
 (provide ramped-half-and-half)
+
+(define (chance p) (< (random) p))
 
 ;; Restricted functions
 (define (r-add a b) (+ a b))
@@ -52,22 +56,22 @@
     (if (= level maxdepth)
       (let ([t1 (random-term termlist)])
         (match t1 ['x (leaf 'x)]
-                  ['R (leaf (random))]))
+               ['R (leaf (random))]))
       (let ([f (random-fn ftable)])
         (match f [(fn sym 1 _) (branch1 sym (full (add1 level) maxdepth))]
-                 [(fn sym 2 _) (branch2 sym (full (add1 level) maxdepth)
-                                            (full (add1 level) maxdepth))]))))
+               [(fn sym 2 _) (branch2 sym (full (add1 level) maxdepth)
+                                      (full (add1 level) maxdepth))]))))
   (define (grow level maxdepth)
     (if (= level maxdepth)
       (let ([t1 (random-term termlist)])
         (match t1 ['x (leaf 'x)]
-                  ['R (leaf (random))]))
+               ['R (leaf (random))]))
       (let ([e1 (random-item ftable termlist)])
         (match e1 [(fn sym 1 _) (branch1 sym (grow (add1 level) maxdepth))]
-                  [(fn sym 2 _) (branch2 sym (grow (add1 level) maxdepth)
-                                             (grow (add1 level) maxdepth))]
-                  ['x (leaf 'x)]
-                  ['R (leaf (random))]))))
+               [(fn sym 2 _) (branch2 sym (grow (add1 level) maxdepth)
+                                      (grow (add1 level) maxdepth))]
+               ['x (leaf 'x)]
+               ['R (leaf (random))]))))
   (let ([count (/ (/ popsize (- (add1 maxheight) 2)) 2)])
     (apply append (map (lambda (maxdepth)
                          (append (map (lambda (x) (full 0 maxdepth)) (range 0 count))
@@ -80,9 +84,9 @@
 (define (eval-symtree symtree arg ftable)
   (define (f subtree)
     (match subtree [(leaf 'x)            arg]
-                   [(leaf  r)              r]
-                   [(branch1 sym a1)       ((sym->proc sym ftable) (f a1))]
-                   [(branch2 sym a1 a2)    ((sym->proc sym ftable) (f a1) (f a2))]))
+           [(leaf  r)              r]
+           [(branch1 sym a1)       ((sym->proc sym ftable) (f a1))]
+           [(branch2 sym a1 a2)    ((sym->proc sym ftable) (f a1) (f a2))]))
   (f symtree))
 
 (struct fitcase (input output) #:transparent)
@@ -106,6 +110,28 @@
   (lambda (symtree)
     (calc-fitness-from-diffs (calc-fit-diffs fitcases symtree ftable))))
 
+(define (selection-tournament fpop tourny-size prob-best)
+  (let* ([tpop (take (shuffle fpop) tourny-size)])           ; Select the individuals for tournament
+    (if (chance prob-best)
+      (first (sort tpop (lambda (x y) (< (car x) (car y))))) ; bprob % of the time take the best
+      (first (shuffle tpop)))))                              ; Otherwise take a random one
+
+(define eval-form
+  (let ((ns (make-base-namespace)))
+    (lambda (form) 
+      (eval `(lambda (x) ,form) ns))))
+
+(define (symtree->proc symtree ftable)
+  (match symtree [(leaf 'x) 'x]
+         [(leaf  r)  r]
+         [(branch1 sym a1)    `(,(sym->proc sym ftable) ,(symtree->proc a1 ftable))]
+         [(branch2 sym a1 a2) `(,(sym->proc sym ftable) ,(symtree->proc a1 ftable) ,(symtree->proc a2 ftable))]))
+
+
+(define (plot-symtree symtree ftable xmin xmax)
+  (plot (function (eval-form (symtree->proc symtree *func-table*))
+                  -5 5)))
+
 ;; GP Algorithm
 ;; ============
 (define (generic-gp popsize maxheight ftable termlist)
@@ -121,7 +147,8 @@
            [fitcases (create-fitness-cases fn -5.0 5.0 20)]
            [fits (map (calc-fitness fitcases *func-table*) initial-population)]
            [fpop (map list fits initial-population)])
-      (argmin (lambda (x) (car x)) fpop))))
+      (displayln (argmin (lambda (x) (car x)) fpop))
+      (plot-symtree (cadr (argmin (lambda (x) (car x)) fpop)) ftable -5 5))))
 
 (define (main)
   (generic-gp *pop-size* *max-init-program-size* *func-table* *terminals*))
