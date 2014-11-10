@@ -11,7 +11,9 @@
 (define (r-div a b) (if (= b 0) 0 (/ a b)))
 (define (r-sin a)   (sin a))
 (define (r-cos a)   (cos a))
-(define (r-exp a b) (if (and (= a 0) (< b 0)) 0 (expt a b)))
+(define (r-exp a b) (if (not (and (real? a) (real? b)))
+                      +inf.f
+                      (if (and (= a 0) (< b 0)) 0 (expt a b))))
 
 (define *pop-size* 1000)
 (define *success* 20)
@@ -50,20 +52,22 @@
     (if (= level maxdepth)
       (let ([t1 (random-term termlist)])
         (match t1 ['x (leaf 'x)]
-               ['R (leaf (random))]))
+                  ['R (leaf (random))]))
       (let ([f (random-fn ftable)])
         (match f [(fn sym 1 _) (branch1 sym (full (add1 level) maxdepth))]
-               [(fn sym 2 _) (branch2 sym (full (add1 level) maxdepth)
-                                      (full (add1 level) maxdepth))]))))
+                 [(fn sym 2 _) (branch2 sym (full (add1 level) maxdepth)
+                                            (full (add1 level) maxdepth))]))))
   (define (grow level maxdepth)
     (if (= level maxdepth)
-      (leaf (random-term termlist))
+      (let ([t1 (random-term termlist)])
+        (match t1 ['x (leaf 'x)]
+                  ['R (leaf (random))]))
       (let ([e1 (random-item ftable termlist)])
         (match e1 [(fn sym 1 _) (branch1 sym (grow (add1 level) maxdepth))]
-               [(fn sym 2 _) (branch2 sym (grow (add1 level) maxdepth)
-                                      (grow (add1 level) maxdepth))]
-               ['x (leaf 'x)]
-               ['R (leaf (random))]))))
+                  [(fn sym 2 _) (branch2 sym (grow (add1 level) maxdepth)
+                                             (grow (add1 level) maxdepth))]
+                  ['x (leaf 'x)]
+                  ['R (leaf (random))]))))
   (let ([count (/ (/ popsize (- (add1 maxheight) 2)) 2)])
     (apply append (map (lambda (maxdepth)
                          (append (map (lambda (x) (full 0 maxdepth)) (range 0 count))
@@ -75,24 +79,32 @@
 
 (define (eval-symtree symtree arg ftable)
   (define (f subtree)
-    (match subtree [(leaf 'x)         arg]
-           [(leaf  r)           r]
-           [(branch1 sym a1)    ((sym->proc sym ftable) (f a1))]
-           [(branch2 sym a1 a2) ((sym->proc sym ftable) (f a1) (f a2))]))
+    (match subtree [(leaf 'x)            arg]
+                   [(leaf  r)              r]
+                   [(branch1 sym a1)       ((sym->proc sym ftable) (f a1))]
+                   [(branch2 sym a1 a2)    ((sym->proc sym ftable) (f a1) (f a2))]))
   (f symtree))
 
 (struct fitcase (input output) #:transparent)
 (define (create-fitness-cases fn minp maxp n)
   (map (lambda (x) (fitcase x (fn x)))
-    (map (lambda (x) (+ minp (* (- maxp minp) (/ x n))))
-         (range 0 (+ n 1)))))
+       (map (lambda (x) (+ minp (* (- maxp minp) (/ x n))))
+            (range 0 (+ n 1)))))
 
-(define (calc-fit-diiffs fitcases symtree ftable)
+(define (calc-fit-diffs fitcases symtree ftable)
   (map (lambda (x)
          (let ([rslt (eval-symtree symtree (fitcase-input x) ftable)])
-           (fitcase (fitcase-input x) (abs (- (fitcase-input x) rslt)))))
+           (fitcase (fitcase-input x) 
+                    (if (real? rslt) (abs (- (fitcase-output x) rslt))
+                      +inf.f))))
        fitcases))
 
+(define (calc-fitness-from-diffs fitdiffs)
+  (foldl + 1 (map (lambda (x) (fitcase-output x)) fitdiffs)))
+
+(define (calc-fitness fitcases ftable)
+  (lambda (symtree)
+    (calc-fitness-from-diffs (calc-fit-diffs fitcases symtree ftable))))
 
 ;; GP Algorithm
 ;; ============
@@ -105,18 +117,13 @@
     ;;         Reproduce a progam by copying it into the new generation
     ;;         create 2 new programs by crossover
     ;;     Designate best program so far
-    ;(eval-symtree 
-    (calc-fit-diiffs (create-fitness-cases (lambda (x) 
-                                             (+ 1
-                                             (+ x
-                                             (+ (expt (* 2 x) 2)
-                                               (expt (* 3 x) 3)))))
-                                           -5.0 5.0 20)
-      (car initial-population) *func-table*))) 
-      ;5 ftable)))
+    (let* ([fn (lambda (x) (+ 1 (+ x (+ (expt (* 2 x) 2) (expt (* 3 x) 3)))))]
+           [fitcases (create-fitness-cases fn -5.0 5.0 20)]
+           [fits (map (calc-fitness fitcases *func-table*) initial-population)]
+           [fpop (map list fits initial-population)])
+      (argmin (lambda (x) (car x)) fpop))))
 
 (define (main)
-  ;(create-fitness-cases (lambda (x) x) -5.0 5.0 20))
   (generic-gp *pop-size* *max-init-program-size* *func-table* *terminals*))
 
 (main)
