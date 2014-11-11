@@ -15,9 +15,12 @@
 (define (r-div a b) (if (= b 0) 0 (/ a b)))
 (define (r-sin a)   (sin a))
 (define (r-cos a)   (cos a))
-(define (r-exp a b) (if (not (and (real? a) (real? b)))
-                      +inf.f
-                      (if (and (= a 0) (< b 0)) 0 (expt a b))))
+(define (r-exp a b) ;(foldl * 1 (map (lambda (x) a) (range 0 b)))) 
+  ;(if (not (and (real? a) (real? b)))
+                    ;  +inf.f
+                      (if (and (= a 0) (< b 0)) 0 
+                          (let ([t (expt a b)])
+                            (if (not (complex? t)) t 1))))
 
 (define *pop-size* 1000)
 (define *success* 20)
@@ -99,12 +102,12 @@
   (map (lambda (x)
          (let ([rslt (eval-symtree symtree (fitcase-input x) ftable)])
            (fitcase (fitcase-input x) 
-                    (if (real? rslt) (abs (- (fitcase-output x) rslt))
-                      +inf.f))))
+                    (sqr (- (fitcase-output x) rslt)))))
        fitcases))
 
 (define (calc-fitness-from-diffs fitdiffs)
-  (foldl + 1 (map (lambda (x) (fitcase-output x)) fitdiffs)))
+  (let ([sum (foldl + 0 (map (lambda (x) (fitcase-output x)) fitdiffs))])
+    (sqrt (/ sum 60))))
 
 (define (calc-fitness fitcases ftable)
   (lambda (symtree)
@@ -128,9 +131,10 @@
          [(branch2 sym a1 a2) `(,(sym->proc sym ftable) ,(symtree->proc a1 ftable) ,(symtree->proc a2 ftable))]))
 
 
-(define (plot-symtree symtree ftable xmin xmax)
-  (plot (function (eval-form (symtree->proc symtree *func-table*))
-                  -5 5)))
+(define (plot-symtree basefn symtree ftable xmin xmax)
+  (plot (list (function basefn xmin xmax)
+         (function (eval-form (symtree->proc symtree *func-table*))
+                  xmin xmax))))
 
 ;; GP Algorithm
 ;; ============
@@ -144,11 +148,11 @@
     ;;         create 2 new programs by crossover
     ;;     Designate best program so far
     (let* ([fn (lambda (x) (+ 1 (+ x (+ (expt (* 2 x) 2) (expt (* 3 x) 3)))))]
-           [fitcases (create-fitness-cases fn -5.0 5.0 20)]
+           [fitcases (create-fitness-cases fn -5.0 5.0 60)]
            [fits (map (calc-fitness fitcases *func-table*) initial-population)]
            [fpop (map list fits initial-population)])
       (displayln (argmin (lambda (x) (car x)) fpop))
-      (plot-symtree (cadr (argmin (lambda (x) (car x)) fpop)) ftable -5 5))))
+      (plot-symtree fn (cadr (argmin (lambda (x) (car x)) fpop)) ftable -5 5))))
 
 (define (main)
   (generic-gp *pop-size* *max-init-program-size* *func-table* *terminals*))
