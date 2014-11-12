@@ -91,11 +91,15 @@
 (define (random-move pt ncells)
   (move pt (random-direction) ncells))
 
+(define (drop-phermn! ant matrix)
+  null)
+
 (define (gohome p home)
   (define (normal x) 
     (if (= 0 x) x (/ x (abs x))))
   (let ([x (- (pt-x p) (pt-x home))]
         [y (- (pt-y p) (pt-y home))])
-    (pt (- (pt-x p) (normal x))
-        (- (pt-y p) (normal y)))))
+    ;(if (< x y)
+      (pt (- (pt-x p) (normal x)) (- (pt-y p) (normal y)))))
+      ;(pt (pt-x p) (- (pt-y p) (normal y))))))
 

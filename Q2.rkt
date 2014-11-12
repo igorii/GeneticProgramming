@@ -1,10 +1,12 @@
 #lang racket
 
+(require racket/gui/base)
 (require racket/match)
-(require plot)
-(plot-new-window? #t)
+;(require plot)
+;(plot-new-window? #t)
+(require "generic-window.rkt")
+(require "regression-drawing.rkt")
 
-(provide ramped-half-and-half)
 
 (define (chance p) (< (random) p))
 
@@ -17,10 +19,10 @@
 (define (r-cos a)   (cos a))
 (define (r-exp a b) ;(foldl * 1 (map (lambda (x) a) (range 0 b)))) 
   ;(if (not (and (real? a) (real? b)))
-                    ;  +inf.f
-                      (if (and (= a 0) (< b 0)) 0 
-                          (let ([t (expt a b)])
-                            (if (not (complex? t)) t 1))))
+  ;  +inf.f
+  (if (and (= a 0) (< b 0)) 0 
+    (let ([t (expt a b)])
+      (if (not (complex? t)) t 1))))
 
 (define *pop-size* 1000)
 (define *success* 20)
@@ -119,6 +121,7 @@
       (first (sort tpop (lambda (x y) (< (car x) (car y))))) ; bprob % of the time take the best
       (first (shuffle tpop)))))                              ; Otherwise take a random one
 
+
 (define eval-form
   (let ((ns (make-base-namespace)))
     (lambda (form) 
@@ -131,10 +134,19 @@
          [(branch2 sym a1 a2) `(,(sym->proc sym ftable) ,(symtree->proc a1 ftable) ,(symtree->proc a2 ftable))]))
 
 
-(define (plot-symtree basefn symtree ftable xmin xmax)
-  (plot (list (function basefn xmin xmax)
-         (function (eval-form (symtree->proc symtree *func-table*))
-                  xmin xmax))))
+;(define (plot-symtree basefn symtree ftable xmin xmax)
+;  (plot (list (function basefn xmin xmax)
+;              (function (eval-form (symtree->proc symtree ftable))
+;                        xmin xmax))))
+
+(define (crossover-one-point p1 p2)
+  (define (find-common-tree p1 p2 acc)
+    (match (list p1 p2) 
+           [(list (leaf a) (leaf b)) null]
+           [(list (branch1 n1 a1) (branch1 n2 a2)) null]
+           [(list (branch2 n1 a11 a12) (branch2 n2 a21 a22)) null]
+           [_ null]))
+  null)
 
 ;; GP Algorithm
 ;; ============
@@ -151,10 +163,20 @@
            [fitcases (create-fitness-cases fn -5.0 5.0 60)]
            [fits (map (calc-fitness fitcases *func-table*) initial-population)]
            [fpop (map list fits initial-population)])
-      (displayln (argmin (lambda (x) (car x)) fpop))
-      (plot-symtree fn (cadr (argmin (lambda (x) (car x)) fpop)) ftable -5 5))))
+      (displayln (car (argmin (lambda (x) (car x)) fpop)))
+      (update-canvas (window-canvas *window*) (eval-form (symtree->proc (cadr (argmin (lambda (x) (car x)) fpop)) ftable)) fn -5 5 600 600))))
 
-(define (main)
+(define (start-regression)
   (generic-gp *pop-size* *max-init-program-size* *func-table* *terminals*))
+
+(define *window* null)
+(define (main)
+  (let ([app-window (create-window "Symbolic Regression" 600 600)])
+    (set! *window* app-window)
+    (start-gui app-window)
+    (define (loop)
+        (generic-gp 1000 6 *func-table* *terminals*)
+    (loop))
+    (thread loop)))
 
 (main)

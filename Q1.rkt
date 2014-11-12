@@ -1,17 +1,22 @@
 #lang racket
 
-(require "window.rkt")
+(require "generic-window.rkt")
+(require "ant-drawing.rkt")
 (require "datatypes.rkt")
 
-(define *grid* (grid 100 6 (* 6 100)))
-(define *nfood* 50)
-(define *nants* 50)
+(define *grid* (grid 60 6 (* 6 60)))
+(define *nfood* 20)
+(define *nants* 20)
 (define *window* null)
 (define *next-timestamp* (current-milliseconds))
 (define *fps* (quotient 1000 40))
-(define *decay-amt* 2)
-(define *drop-amt* 70)
-(define *max-amt* 255)
+(define *decay-amt* 10)
+(define *drop-amt* 30)
+(define *max-amt* 1000)
+
+(define (idiv x y) (exact->inexact (/ x y)))
+(define (ridiv x y) (round (idiv x y)))
+(define (eridiv x y) (inexact->exact (ridiv x y)))
 
 (define (update-ant! a g w)
   ; HF = has food
@@ -31,10 +36,19 @@
        (set-ant-has-food! a #f)]
 
       ; Else if HF and ~AH, drop phermn and move away
-      [(and (ant-has-food a) 
+      [(and (ant-has-food a)
             (not (equal? (ant-pt a) (world-home w))))
-       (set-cell-phermn! currcell 
+       ;(drop-phermn! ant )
+       (set-cell-phermn! currcell
                          (min *max-amt* (+ *drop-amt* (cell-phermn currcell))))
+       (let ([cs (adjacent-cells (ant-pt a) (world-cells w) (grid-ncells g))])
+         (for ([c cs])
+              (set-cell-phermn! c
+                                (min *max-amt* (+ (eridiv *drop-amt* 2) (cell-phermn c))))
+              (let ([cs (adjacent-cells (ant-pt a) (world-cells w) (grid-ncells g))])
+                (for ([c cs])
+                     (set-cell-phermn! c
+                                       (min *max-amt* (+ (eridiv *drop-amt* 4) (cell-phermn c))))))))
        (set-ant-pt! a (gohome (ant-pt a) (world-home w)))]
 
       ; Else if ~HF and SF, pick up food and go home
@@ -52,7 +66,6 @@
                                     (> (distance (cell-pt x) (world-home w))
                                        (distance (ant-pt a) (world-home w)))) 
                                   adj-phermn-cells)])
-         (displayln farther-pts)
          (if (null? farther-pts)
            (set-ant-pt! a (random-move (ant-pt a) (grid-ncells g)))
            (set-ant-pt! a (cell-pt (argmax (lambda (x) (cell-phermn x))
@@ -69,13 +82,14 @@
 
 (define (adjacent-cells p cells ncells)
   (let ([l '()])
-    (for ([x (range (sub1 (pt-x p)) (add1 (pt-x p)))])
-         (for ([y (range (sub1 (pt-y p)) (add1 (pt-y p)))])
+    (for ([x (range (sub1 (pt-x p)) (add1 (add1 (pt-x p))))])
+         (for ([y (range (sub1 (pt-y p)) (add1 (add1 (pt-y p))))])
               (set! l (cons (get-cell cells 
                                       (modulo x ncells) 
                                       (modulo y ncells))
                             l))))
     l))
+
 (define (adj-phermn-cells p cells ncells)
   (let ([adjcells (adjacent-cells p cells ncells)])
     (filter (lambda (x) (not (= 0 (cell-phermn x)))) adjcells)))
@@ -108,6 +122,7 @@
                    null
                    (make-cells (grid-ncells *grid*)))])
     (place-food! *nfood* 10 (grid-ncells *grid*) (world-cells w))
+    ;(displayln (adjacent-cells (pt 5 5) (world-cells w) (grid-ncells *grid*)))))
     (main-loop *grid* w)))
 
 (define (main)
