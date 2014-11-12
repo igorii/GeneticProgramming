@@ -5,13 +5,13 @@
 (require "datatypes.rkt")
 
 (define *grid* (grid 60 6 (* 6 60)))
-(define *nfood* 20)
-(define *nants* 20)
+(define *nfood* 10)
+(define *nants* 30)
 (define *window* null)
 (define *next-timestamp* (current-milliseconds))
 (define *fps* (quotient 1000 40))
-(define *decay-amt* 10)
-(define *drop-amt* 30)
+(define *decay-amt* 5)
+(define *drop-amt* 20)
 (define *max-amt* 1000)
 
 (define (idiv x y) (exact->inexact (/ x y)))
@@ -33,6 +33,16 @@
       ; If HF and AH, drop food and move away
       [(and (ant-has-food a) 
             (equal? (ant-pt a) (world-home w)))
+       (set-cell-phermn! currcell
+                         (min *max-amt* (+ *drop-amt* (cell-phermn currcell))))
+       (let ([cs (adjacent-cells (ant-pt a) (world-cells w) (grid-ncells g))])
+         (for ([c cs])
+              (set-cell-phermn! c
+                                (min *max-amt* (+ (eridiv *drop-amt* 2) (cell-phermn c))))
+              (let ([cs (adjacent-cells (ant-pt a) (world-cells w) (grid-ncells g))])
+                (for ([c cs])
+                     (set-cell-phermn! c
+                                       (min *max-amt* (+ (eridiv *drop-amt* 4) (cell-phermn c))))))))
        (set-ant-has-food! a #f)]
 
       ; Else if HF and ~AH, drop phermn and move away
@@ -121,7 +131,7 @@
                         (range 0 *nants*)) 
                    null
                    (make-cells (grid-ncells *grid*)))])
-    (place-food! *nfood* 10 (grid-ncells *grid*) (world-cells w))
+    (place-food! *nfood* 20 (grid-ncells *grid*) (world-cells w))
     ;(displayln (adjacent-cells (pt 5 5) (world-cells w) (grid-ncells *grid*)))))
     (main-loop *grid* w)))
 
