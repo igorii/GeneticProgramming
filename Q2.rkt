@@ -37,10 +37,38 @@
 (define *tourny-size* 7)
 (define *elitism* #t)
 (define *terminals* (list 'x 'R))
+(define *nfitcases* 20)
 
 (struct leaf    (x)       #:transparent)
 (struct branch1 (n a1)    #:transparent)
 (struct branch2 (n a1 a2) #:transparent)
+
+(define (tree-size tree)
+  (match tree [(leaf _) 1]
+              [(branch1 _ a1) (add1 (tree-size a1))]
+              [(branch2 _ a1 a2) (add1 (+ (tree-size a1) (tree-size a2)))]))
+
+(define (random-subtree tree)
+  (define (search tree p)
+    (if (chance p)
+      (list tree)
+      (match tree [(leaf x) null]
+                  [(branch1 _ a1) (search a1 p)]
+                  [(branch2 _ a1 a2) (append (search a1) (search a2))])))
+  (let ([nodes (search tree (/ 1 (tree-size tree)))])
+    (if (null? nodes) tree (car (shuffle nodes)))))
+
+(define (crossover p1 p2)
+  (define (insert node tree p cb)
+    (if inserted
+      )
+    )
+
+  (let ([subtree (random-subtree p1)])
+    
+    )
+  )
+
 (struct fn (sym arity proc))
 (define *func-table* (list (fn 'add 2 r-add)
                            (fn 'sub 2 r-sub)
@@ -109,7 +137,7 @@
 
 (define (calc-fitness-from-diffs fitdiffs)
   (let ([sum (foldl + 0 (map (lambda (x) (fitcase-output x)) fitdiffs))])
-    (sqrt (/ sum 60))))
+    (sqrt (/ sum *nfitcases*))))
 
 (define (calc-fitness fitcases ftable)
   (lambda (symtree)
@@ -121,7 +149,6 @@
       (first (sort tpop (lambda (x y) (< (car x) (car y))))) ; bprob % of the time take the best
       (first (shuffle tpop)))))                              ; Otherwise take a random one
 
-
 (define eval-form
   (let ((ns (make-base-namespace)))
     (lambda (form) 
@@ -132,12 +159,6 @@
          [(leaf  r)  r]
          [(branch1 sym a1)    `(,(sym->proc sym ftable) ,(symtree->proc a1 ftable))]
          [(branch2 sym a1 a2) `(,(sym->proc sym ftable) ,(symtree->proc a1 ftable) ,(symtree->proc a2 ftable))]))
-
-
-;(define (plot-symtree basefn symtree ftable xmin xmax)
-;  (plot (list (function basefn xmin xmax)
-;              (function (eval-form (symtree->proc symtree ftable))
-;                        xmin xmax))))
 
 (define (crossover-one-point p1 p2)
   (define (find-common-tree p1 p2 acc)
@@ -151,20 +172,26 @@
 ;; GP Algorithm
 ;; ============
 (define (generic-gp popsize maxheight ftable termlist)
+  (define (loop fn fitcases last-best last-pop)
+    (let* ([fits (map (calc-fitness fitcases *func-table*) last-pop)]
+           [fpop (map list fits last-pop)]
+           [curr-best (argmin (lambda (x) (car x)) fpop)]
+           [new-best (if (or (null? last-best) (< (car curr-best) (car last-best))) curr-best last-best)])
+      (displayln (car new-best))
+      (update-canvas (window-canvas *window*) (eval-form (symtree->proc (cadr new-best) ftable)) fn -5 5 600 600)
+      (loop fn fitcases new-best (ramped-half-and-half popsize maxheight ftable termlist))))
+
   ;; Generate initial population of random programs
-  (let ([initial-population (ramped-half-and-half popsize maxheight ftable termlist)])
+  (let* ([initial-population (ramped-half-and-half popsize maxheight ftable termlist)]
     ;; Repeat until termination condition
     ;;     Execute each program and assign it a fitness
     ;;     Create a new population by applying the following operations to programs selected with fitness based on probability:
     ;;         Reproduce a progam by copying it into the new generation
     ;;         create 2 new programs by crossover
     ;;     Designate best program so far
-    (let* ([fn (lambda (x) (+ 1 (+ x (+ (expt (* 2 x) 2) (expt (* 3 x) 3)))))]
-           [fitcases (create-fitness-cases fn -5.0 5.0 60)]
-           [fits (map (calc-fitness fitcases *func-table*) initial-population)]
-           [fpop (map list fits initial-population)])
-      (displayln (car (argmin (lambda (x) (car x)) fpop)))
-      (update-canvas (window-canvas *window*) (eval-form (symtree->proc (cadr (argmin (lambda (x) (car x)) fpop)) ftable)) fn -5 5 600 600))))
+         [fn (lambda (x) (+ 1 (+ x (+ (expt (* 2 x) 2) (expt (* 3 x) 3)))))]
+         [fitcases (create-fitness-cases fn -5.0 5.0 *nfitcases*)])
+    (loop fn fitcases null initial-population)))
 
 (define (start-regression)
   (generic-gp *pop-size* *max-init-program-size* *func-table* *terminals*))
@@ -174,9 +201,6 @@
   (let ([app-window (create-window "Symbolic Regression" 600 600)])
     (set! *window* app-window)
     (start-gui app-window)
-    (define (loop)
-        (generic-gp 1000 6 *func-table* *terminals*)
-    (loop))
-    (thread loop)))
+    (thread start-regression)))
 
 (main)
