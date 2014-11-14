@@ -20,12 +20,12 @@
     (let ([t (expt a b)])
       (if (not (complex? t)) t 1))))
 
-(define *pop-size* 1000)
+(define *pop-size* 500)
 (define *success* 20)
 (define *precision* 0.001)
 (define *max-generations* 51)
 (define *%crossover* 0.9)
-(define *%mutation* 0.01)
+(define *%mutation* 0.05)
 (define *%reproduction* 0.09)
 (define *%crossover-point* 0.9)
 (define *max-init-program-size* 6)
@@ -63,6 +63,7 @@
   (let ([nodes (tree->list tree)])
     (list-ref nodes (random (length nodes)))))
 
+
 (define (copy-tree tree)
   (match tree [(leaf n) (leaf n)]
          [(branch1 n a1) (branch1 n (copy-tree a1))]
@@ -82,57 +83,12 @@
 
 (define (tree-depth tree)
   (match tree [(leaf _) 0]
-              [(branch1 n a1) (add1 (tree-depth a1))]
-              [(branch2 n a1 a2) (add1 (max (tree-depth a1) (tree-depth a2)))]))
+         [(branch1 n a1) (add1 (tree-depth a1))]
+         [(branch2 n a1 a2) (add1 (max (tree-depth a1) (tree-depth a2)))]))
 
-(define (crossover p1 p2)
-  (let* ([p1cpy          (copy-tree p1)]
-         [p2cpy          (copy-tree p2)]
-         [subtree        (random-subtree p1cpy)]
-         [incoming-place (random-subtree p2cpy)])
-    (if (leaf? p2)
-      (pathnode-node subtree)
-      (if (null? (pathnode-path incoming-place))
-        (crossover p1 p2)
-        (let ([parent (follow-zipper (pathnode-path incoming-place) p2cpy)])
-          (if (null? parent)
-            (crossover p1 p2)
-            (let ([parent-node (pathnode-node parent)])
-              (cond [(leaf? parent-node) (pathnode-node subtree)]
-                    [(branch1? parent-node) (set-branch1-a1! parent-node (pathnode-node subtree)) p2cpy]
-                    [(branch2? parent-node) 
-                     (match (pathnode-path parent)
-                            ['l (set-branch2-a1! parent-node (pathnode-node subtree)) (if (> (tree-depth p2cpy) *max-run-program-size*) (crossover p1 p2) p2cpy)]
-                            ['r (set-branch2-a2! parent-node (pathnode-node subtree)) (if (> (tree-depth p2cpy) *max-run-program-size*) (crossover p1 p2) p2cpy)])]))))))))
 
 ;; Ramped Half-and-Half
 ;; ====================
-(define (ramped-half-and-half popsize maxheight ftable termlist)
-  (define (full level maxdepth)
-    (if (= level maxdepth)
-      (let ([t1 (random-term termlist)])
-        (match t1 ['x (leaf 'x)]
-               ['R (leaf (* 3 (random)))]))
-      (let ([f (random-fn ftable)])
-        (match f [(fn sym 1 _) (branch1 sym (full (add1 level) maxdepth))]
-               [(fn sym 2 _) (branch2 sym (full (add1 level) maxdepth)
-                                      (full (add1 level) maxdepth))]))))
-  (define (grow level maxdepth)
-    (if (= level maxdepth)
-      (let ([t1 (random-term termlist)])
-        (match t1 ['x (leaf 'x)]
-               ['R (leaf (* 3 (random)))]))
-      (let ([e1 (random-item ftable termlist)])
-        (match e1 [(fn sym 1 _) (branch1 sym (grow (add1 level) maxdepth))]
-               [(fn sym 2 _) (branch2 sym (grow (add1 level) maxdepth)
-                                      (grow (add1 level) maxdepth))]
-               ['x (leaf 'x)]
-               ['R (leaf (random))]))))
-  (let ([count (/ (/ popsize (- (add1 maxheight) 2)) 2)])
-    (apply append (map (lambda (maxdepth)
-                         (append (map (lambda (x) (full 0 maxdepth)) (range 0 count))
-                                 (map (lambda (x) (grow 0 maxdepth)) (range 0 count))))
-                       (range 2 (add1 maxheight))))))
 
 (define (sym->proc sym ftable)
   (fn-proc (car (filter (lambda (x) (equal? (fn-sym x) sym)) ftable))))
@@ -198,13 +154,6 @@
            [_ null]))
   null)
 
-(define (create-next-generation fpop size tourny-size)
-  (map (lambda (x)
-      (let ([p1 (selection-tournament fpop tourny-size 1)]
-            [p2 (selection-tournament fpop tourny-size 1)])
-        (crossover (cadr p1) (cadr p2))))
-    (range 0 size)))
-
 (define (callback target fit individual)
   (displayln "--------------------------------------------------------------------------------")
   (displayln fit)
@@ -216,24 +165,84 @@
 ;; GP Algorithm
 ;; ============
 (define (generic-gp popsize maxheight ftable termlist callback)
+
+  (define (create-next-generation mutation% fpop size tourny-size)
+    (map (lambda (x)
+           (let* ([p1 (selection-tournament fpop tourny-size 1)]
+                  [p2 (selection-tournament fpop tourny-size 1)]
+                  [candidate (crossover (cadr p1) (cadr p2))])
+             (if (chance mutation%) (mutation-point candidate *max-init-program-size*) candidate)))
+         (range 0 size)))
+
+  (define (full level maxdepth)
+    (if (= level maxdepth)
+      (let ([t1 (random-term termlist)])
+        (match t1 ['x (leaf 'x)]
+               ['R (leaf (* 3 (random)))]))
+      (let ([f (random-fn ftable)])
+        (match f [(fn sym 1 _) (branch1 sym (full (add1 level) maxdepth))]
+               [(fn sym 2 _) (branch2 sym (full (add1 level) maxdepth)
+                                      (full (add1 level) maxdepth))]))))
+  (define (grow level maxdepth)
+    (if (= level maxdepth)
+      (let ([t1 (random-term termlist)])
+        (match t1 ['x (leaf 'x)]
+               ['R (leaf (* 3 (random)))]))
+      (let ([e1 (random-item ftable termlist)])
+        (match e1 [(fn sym 1 _) (branch1 sym (grow (add1 level) maxdepth))]
+               [(fn sym 2 _) (branch2 sym (grow (add1 level) maxdepth)
+                                      (grow (add1 level) maxdepth))]
+               ['x (leaf 'x)]
+               ['R (leaf (random))]))))
+
+  (define (ramped-half-and-half popsize)
+    (let ([count (/ (/ popsize (- (add1 maxheight) 2)) 2)])
+      (apply append (map (lambda (maxdepth)
+                           (append (map (lambda (x) (full 0 maxdepth)) (range 0 count))
+                                   (map (lambda (x) (grow 0 maxdepth)) (range 0 count))))
+                         (range 2 (add1 maxheight))))))
+
+  (define (crossover p1 p2)
+    (let* ([p1cpy          (copy-tree p1)]
+           [p2cpy          (copy-tree p2)]
+           [subtree        (random-subtree p1cpy)]
+           [incoming-place (random-subtree p2cpy)])
+      (if (leaf? p2)
+        (pathnode-node subtree)
+        (if (null? (pathnode-path incoming-place))
+          (crossover p1 p2)
+          (let ([parent (follow-zipper (pathnode-path incoming-place) p2cpy)])
+            (if (null? parent)
+              (crossover p1 p2)
+              (let ([parent-node (pathnode-node parent)])
+                (cond [(leaf? parent-node) (pathnode-node subtree)]
+                      [(branch1? parent-node) (set-branch1-a1! parent-node (pathnode-node subtree)) p2cpy]
+                      [(branch2? parent-node) 
+                       (match (pathnode-path parent)
+                              ['l (set-branch2-a1! parent-node (pathnode-node subtree)) (if (> (tree-depth p2cpy) *max-run-program-size*) (crossover p1 p2) p2cpy)]
+                              ['r (set-branch2-a2! parent-node (pathnode-node subtree)) (if (> (tree-depth p2cpy) *max-run-program-size*) (crossover p1 p2) p2cpy)])]))))))))
+
+  (define (mutation-point symtree max-depth)
+    (crossover symtree (grow 0 max-depth)))
+
   (define (loop fn fitcases last-best last-pop)
     (let* ([fits (map (calc-fitness fitcases *func-table*) last-pop)]
            [fpop (map list fits last-pop)]
            [curr-best (argmin (lambda (x) (car x)) fpop)]
            [new-best (if (or (null? last-best) (< (car curr-best) (car last-best))) curr-best last-best)])
       (callback fn (car new-best) (cadr new-best))
-      (loop fn fitcases new-best (cons (cadr new-best) (create-next-generation fpop *pop-size* *tourny-size*)))))
+      (loop fn fitcases new-best (cons (cadr new-best) (create-next-generation *%mutation* fpop *pop-size* *tourny-size*)))))
 
   ;; Generate initial population of random programs
-  (let* ([initial-population (ramped-half-and-half popsize maxheight ftable termlist)]
+  (let* ([initial-population (ramped-half-and-half popsize)]
          ;; Repeat until termination condition
          ;;     Execute each program and assign it a fitness
          ;;     Create a new population by applying the following operations to programs selected with fitness based on probability:
          ;;         Reproduce a progam by copying it into the new generation
          ;;         create 2 new programs by crossover
          ;;     Designate best program so far
-         ;[fn (lambda (x) (+ 1 (+ x (+ (expt (* 2 x) 2) (expt (* 3 x) 3)))))]
-         [fn (lambda (x) (+ (cos x) (* 3 (sin (expt x 2)))))]
+         [fn (lambda (x) (+ 1 (+ x (+ (expt (* 2 x) 2) (expt (* 3 x) 3)))))]
+         ;[fn (lambda (x) (+ (cos x) (* 3 (sin (expt x 2)))))]
          [fitcases (create-fitness-cases fn -5.0 5.0 *nfitcases*)])
     (loop fn fitcases null initial-population)))
 
