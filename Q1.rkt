@@ -106,7 +106,6 @@
                    (make-cells (grid-ncells *grid*))
                    *max-amt*)])
     (place-food! *nfood* *food-amt* (grid-ncells *grid*) (world-cells w))
-    ;(displayln (adjacent-cells (pt 5 5) (world-cells w) (grid-ncells *grid*)))))
     (main-loop *grid* w)))
 
 (define (main)
