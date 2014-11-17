@@ -58,15 +58,15 @@
              (+ (/ sz 2) (* sz (pt-y (ant-pt a))))
              (/ sz 2) (/ sz 2))))
 
+(define (draw-stats dc w)
+  (send dc draw-text (number->string (world-food-at-home w)) 0 0))
+
 (define (draw-world canvas grid world)
   (let [(dc (send canvas get-dc))]
     (send dc erase)
-    ;(send dc set-brush black-brush)
-    ;(send dc draw-rectangle 0 0 
-    ;      (* (grid-ncells grid) (grid-cellsz grid))
-    ;      (* (grid-ncells grid) (grid-cellsz grid)))
     (send dc set-pen no-pen)
     (draw-cells dc (grid-ncells grid) (grid-cellsz grid) (world-cells world) (world-max-phermn world))
     (draw-ants dc (grid-cellsz grid) (world-ants world))
+    (draw-stats dc world)
     (draw-home dc (grid-cellsz grid) (world-home world)))
   (send canvas swap-bitmaps))

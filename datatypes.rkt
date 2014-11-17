@@ -13,7 +13,7 @@
 (provide random-move gohome)
 
 ; grid
-(provide place-food! get-cell set-cell! make-cells)
+(provide inc-home-food! place-food! get-cell set-cell! make-cells)
 
 ;; structs
 
@@ -33,12 +33,13 @@
 (struct cell (pt phermn food) #:mutable)
 
 ;; world :: home : pt, ants : listof ant, foods : listof food, cells : ncells * ncells vector cell
-(struct world (home ants foods cells max-phermn))
+(struct world (food-at-home home ants foods cells max-phermn) #:mutable)
 
 ;; *************************
 ;;       World/Grid
 ;; *************************
 
+(define (inc-home-food! w) (set-world-food-at-home! w (add1 (world-food-at-home w))))
 (define (get-cell matrix x y)
   (vector-ref (vector-ref matrix y) x))
 (define (set-cell! matrix x y new)

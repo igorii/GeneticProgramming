@@ -44,6 +44,7 @@
        ;         (for ([c cs])
        ;              (set-cell-phermn! c
        ;                                (min *max-amt* (+ (eridiv *drop-amt* 4) (cell-phermn c))))))))
+       (inc-home-food! w)
        (set-ant-has-food! a #f)]
 
       ; Else if HF and ~AH, drop phermn and move away
@@ -127,7 +128,8 @@
 
 (define (start-colony)
   (let* ([homept (/ (grid-ncells *grid*) 2)]
-         [w (world (pt homept homept) 
+         [w (world 0
+                   (pt homept homept) 
                    (map (lambda (_) (ant (pt homept homept) #f)) 
                         (range 0 *nants*)) 
                    null
