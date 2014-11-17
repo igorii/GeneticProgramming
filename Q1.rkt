@@ -19,12 +19,24 @@
 (define (ridiv  x y) (round (idiv x y)))
 (define (eridiv x y) (inexact->exact (ridiv x y)))
 
+(define (drop-phermn! a g w)
+   (let* ([currcell (get-cell (world-cells w) (pt-x (ant-pt a)) (pt-y (ant-pt a)))]
+          [cs (adjacent-cells (ant-pt a) (world-cells w) (grid-ncells g))]
+          [max-amt (world-max-phermn w)])
+   (set-cell-phermn! currcell (min max-amt (+ *drop-amt* (cell-phermn currcell))))
+     (for ([c cs])
+          (set-cell-phermn! c (min max-amt (+ (eridiv *drop-amt* 2) (cell-phermn c))))
+          (let ([cs (adjacent-cells (ant-pt a) (world-cells w) (grid-ncells g))])
+            (for ([c cs])
+                 (set-cell-phermn! c (min max-amt (+ (eridiv *drop-amt* 4) (cell-phermn c)))))))))
+
 (define (update-ant! a g w)
   ; HF = has food
   ; SF = sense food
   ; SP = sense phermn
   ; AH = at home
-  (let ([currcell (get-cell (world-cells w) 
+  (let (
+        [currcell (get-cell (world-cells w) 
                             (pt-x (ant-pt a)) 
                             (pt-y (ant-pt a)))]
         [adj-phermn-cells (adj-phermn-cells (ant-pt a) 
@@ -34,16 +46,6 @@
       ; If HF and AH, drop food and move away
       [(and (ant-has-food a) 
             (equal? (ant-pt a) (world-home w)))
-       ;(set-cell-phermn! currcell
-       ;                  (min *max-amt* (+ *drop-amt* (cell-phermn currcell))))
-       ;(let ([cs (adjacent-cells (ant-pt a) (world-cells w) (grid-ncells g))])
-       ;  (for ([c cs])
-       ;       (set-cell-phermn! c
-       ;                         (min *max-amt* (+ (eridiv *drop-amt* 2) (cell-phermn c))))
-       ;       (let ([cs (adjacent-cells (ant-pt a) (world-cells w) (grid-ncells g))])
-       ;         (for ([c cs])
-       ;              (set-cell-phermn! c
-       ;                                (min *max-amt* (+ (eridiv *drop-amt* 4) (cell-phermn c))))))))
        (inc-home-food! w)
        (set-ant-has-food! a #f)]
 
@@ -51,16 +53,7 @@
       [(and (ant-has-food a)
             (not (equal? (ant-pt a) (world-home w))))
        ;(drop-phermn! ant )
-       (set-cell-phermn! currcell
-                         (min *max-amt* (+ *drop-amt* (cell-phermn currcell))))
-       (let ([cs (adjacent-cells (ant-pt a) (world-cells w) (grid-ncells g))])
-         (for ([c cs])
-              (set-cell-phermn! c
-                                (min *max-amt* (+ (eridiv *drop-amt* 2) (cell-phermn c))))
-              (let ([cs (adjacent-cells (ant-pt a) (world-cells w) (grid-ncells g))])
-                (for ([c cs])
-                     (set-cell-phermn! c
-                                       (min *max-amt* (+ (eridiv *drop-amt* 4) (cell-phermn c))))))))
+       (drop-phermn! a g w)
        (set-ant-pt! a (gohome (ant-pt a) (world-home w)))]
 
       ; Else if ~HF and SF, pick up food and go home
