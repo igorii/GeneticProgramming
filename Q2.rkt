@@ -241,8 +241,8 @@
          ;;         Reproduce a progam by copying it into the new generation
          ;;         create 2 new programs by crossover
          ;;     Designate best program so far
-         [fn (lambda (x) (+ 1 (+ x (+ (expt (* 2 x) 2) (expt (* 3 x) 3)))))]
-         ;[fn (lambda (x) (+ (cos x) (* 3 (sin (expt x 2)))))]
+         ;[fn (lambda (x) (+ 1 (+ x (+ (expt (* 2 x) 2) (expt (* 3 x) 3)))))]
+         [fn (lambda (x) (+ (cos x) (* 3 (sin (expt x 2)))))]
          [fitcases (create-fitness-cases fn -5.0 5.0 *nfitcases*)])
     (loop fn fitcases null initial-population)))
 

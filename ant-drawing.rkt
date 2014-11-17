@@ -23,11 +23,11 @@
 (define green-brush  (make-object brush% "GREEN"   'solid))
 (define red-brush   (make-object brush% "RED"     'solid))
 
-(define (float->color f) 
-  (let ([c (- 255 (min 255 f))])
+(define (float->color f m) 
+  (let ([c (floor (- 255 (* 254 (/ f m))))])
     (make-color c c c)))
 
-(define (draw-cells dc n sz cs)
+(define (draw-cells dc n sz cs m)
   (for ([x (range 0 n)])
        (for ([y (range 0 n)])
             (let ([c (get-cell cs x y)])
@@ -35,7 +35,7 @@
                               (null? (cell-food c))))
                 (if (not (null? (cell-food c)))
                   (send dc set-brush blue-brush)
-                  (send dc set-brush (float->color (cell-phermn c)) 'solid))
+                  (send dc set-brush (float->color (cell-phermn c) m) 'solid))
                 (send dc draw-rectangle
                       (* sz (pt-x (cell-pt c)))
                       (* sz (pt-y (cell-pt c)))
@@ -66,7 +66,7 @@
     ;      (* (grid-ncells grid) (grid-cellsz grid))
     ;      (* (grid-ncells grid) (grid-cellsz grid)))
     (send dc set-pen no-pen)
-    (draw-cells dc (grid-ncells grid) (grid-cellsz grid) (world-cells world))
+    (draw-cells dc (grid-ncells grid) (grid-cellsz grid) (world-cells world) (world-max-phermn world))
     (draw-ants dc (grid-cellsz grid) (world-ants world))
     (draw-home dc (grid-cellsz grid) (world-home world)))
   (send canvas swap-bitmaps))

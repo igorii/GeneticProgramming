@@ -5,17 +5,18 @@
 (require "datatypes.rkt")
 
 (define *grid* (grid 60 6 (* 6 60)))
-(define *nfood* 10)
-(define *nants* 30)
+(define *nfood* 20)
+(define *food-amt* 50)
+(define *nants* 50)
 (define *window* null)
 (define *next-timestamp* (current-milliseconds))
 (define *fps* (quotient 1000 40))
 (define *decay-amt* 5)
-(define *drop-amt* 20)
-(define *max-amt* 1000)
+(define *drop-amt* 5)
+(define *max-amt* 255)
 
-(define (idiv x y) (exact->inexact (/ x y)))
-(define (ridiv x y) (round (idiv x y)))
+(define (idiv   x y) (exact->inexact (/ x y)))
+(define (ridiv  x y) (round (idiv x y)))
 (define (eridiv x y) (inexact->exact (ridiv x y)))
 
 (define (update-ant! a g w)
@@ -33,16 +34,16 @@
       ; If HF and AH, drop food and move away
       [(and (ant-has-food a) 
             (equal? (ant-pt a) (world-home w)))
-       (set-cell-phermn! currcell
-                         (min *max-amt* (+ *drop-amt* (cell-phermn currcell))))
-       (let ([cs (adjacent-cells (ant-pt a) (world-cells w) (grid-ncells g))])
-         (for ([c cs])
-              (set-cell-phermn! c
-                                (min *max-amt* (+ (eridiv *drop-amt* 2) (cell-phermn c))))
-              (let ([cs (adjacent-cells (ant-pt a) (world-cells w) (grid-ncells g))])
-                (for ([c cs])
-                     (set-cell-phermn! c
-                                       (min *max-amt* (+ (eridiv *drop-amt* 4) (cell-phermn c))))))))
+       ;(set-cell-phermn! currcell
+       ;                  (min *max-amt* (+ *drop-amt* (cell-phermn currcell))))
+       ;(let ([cs (adjacent-cells (ant-pt a) (world-cells w) (grid-ncells g))])
+       ;  (for ([c cs])
+       ;       (set-cell-phermn! c
+       ;                         (min *max-amt* (+ (eridiv *drop-amt* 2) (cell-phermn c))))
+       ;       (let ([cs (adjacent-cells (ant-pt a) (world-cells w) (grid-ncells g))])
+       ;         (for ([c cs])
+       ;              (set-cell-phermn! c
+       ;                                (min *max-amt* (+ (eridiv *drop-amt* 4) (cell-phermn c))))))))
        (set-ant-has-food! a #f)]
 
       ; Else if HF and ~AH, drop phermn and move away
@@ -130,8 +131,9 @@
                    (map (lambda (_) (ant (pt homept homept) #f)) 
                         (range 0 *nants*)) 
                    null
-                   (make-cells (grid-ncells *grid*)))])
-    (place-food! *nfood* 20 (grid-ncells *grid*) (world-cells w))
+                   (make-cells (grid-ncells *grid*))
+                   *max-amt*)])
+    (place-food! *nfood* *food-amt* (grid-ncells *grid*) (world-cells w))
     ;(displayln (adjacent-cells (pt 5 5) (world-cells w) (grid-ncells *grid*)))))
     (main-loop *grid* w)))
 

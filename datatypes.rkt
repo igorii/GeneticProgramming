@@ -33,7 +33,7 @@
 (struct cell (pt phermn food) #:mutable)
 
 ;; world :: home : pt, ants : listof ant, foods : listof food, cells : ncells * ncells vector cell
-(struct world (home ants foods cells))
+(struct world (home ants foods cells max-phermn))
 
 ;; *************************
 ;;       World/Grid
@@ -88,6 +88,7 @@
            ['downleft  (begin (move-down! pt ncells) (move-left! pt ncells))]
            ['downright (begin (move-down! pt ncells) (move-right! pt ncells))])
     pt))
+
 (define (random-move pt ncells)
   (move pt (random-direction) ncells))
 
