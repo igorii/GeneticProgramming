@@ -20,66 +20,43 @@
 (define (eridiv x y) (inexact->exact (ridiv x y)))
 
 (define (drop-phermn! a g w)
-   (let* ([currcell (get-cell (world-cells w) (pt-x (ant-pt a)) (pt-y (ant-pt a)))]
-          [cs (adjacent-cells (ant-pt a) (world-cells w) (grid-ncells g))]
-          [max-amt (world-max-phermn w)])
-   (set-cell-phermn! currcell (min max-amt (+ *drop-amt* (cell-phermn currcell))))
-     (for ([c cs])
-          (set-cell-phermn! c (min max-amt (+ (eridiv *drop-amt* 2) (cell-phermn c))))
-          (let ([cs (adjacent-cells (ant-pt a) (world-cells w) (grid-ncells g))])
-            (for ([c cs])
-                 (set-cell-phermn! c (min max-amt (+ (eridiv *drop-amt* 4) (cell-phermn c)))))))))
+  (let* ([currcell (get-cell (world-cells w) (pt-x (ant-pt a)) (pt-y (ant-pt a)))]
+         [cs (adjacent-cells (ant-pt a) (world-cells w) (grid-ncells g))]
+         [max-amt (world-max-phermn w)])
+    (set-cell-phermn! currcell (min max-amt (+ *drop-amt* (cell-phermn currcell))))
+    (for ([c cs])
+         (set-cell-phermn! c (min max-amt (+ (eridiv *drop-amt* 2) (cell-phermn c))))
+         (let ([cs (adjacent-cells (ant-pt a) (world-cells w) (grid-ncells g))])
+           (for ([c cs])
+                (set-cell-phermn! c (min max-amt (+ (eridiv *drop-amt* 4) (cell-phermn c)))))))))
 
 (define (update-ant! a g w)
-  ; HF = has food
-  ; SF = sense food
-  ; SP = sense phermn
-  ; AH = at home
-  (let (
-        [currcell (get-cell (world-cells w) 
-                            (pt-x (ant-pt a)) 
-                            (pt-y (ant-pt a)))]
-        [adj-phermn-cells (adj-phermn-cells (ant-pt a) 
-                                            (world-cells w)
-                                            (grid-ncells g))])
+  ;; HF = has food, SF = sense food, SP = sense phermn, AH = at home
+  (let ([currcell (get-cell (world-cells w) (pt-x (ant-pt a)) (pt-y (ant-pt a)))]
+        [adj-phermn-cells (adj-phermn-cells (ant-pt a) (world-cells w) (grid-ncells g))])
     (cond 
-      ; If HF and AH, drop food and move away
-      [(and (ant-has-food a) 
-            (equal? (ant-pt a) (world-home w)))
+      [(and (ant-has-food a) (equal? (ant-pt a) (world-home w)))        ; If HF and AH, drop food and move away
        (inc-home-food! w)
        (set-ant-has-food! a #f)]
-
-      ; Else if HF and ~AH, drop phermn and move away
-      [(and (ant-has-food a)
-            (not (equal? (ant-pt a) (world-home w))))
-       ;(drop-phermn! ant )
+      [(and (ant-has-food a) (not (equal? (ant-pt a) (world-home w))))  ; Else if HF and ~AH, drop phermn and move away
        (drop-phermn! a g w)
        (set-ant-pt! a (gohome (ant-pt a) (world-home w)))]
-
-      ; Else if ~HF and SF, pick up food and go home
-      [(and (not (ant-has-food a)) 
-            (not (null? (cell-food currcell))))
+      [(and (not (ant-has-food a)) (not (null? (cell-food currcell))))  ; Else if ~HF and SF, pick up food and go home
        (if (>= 1 (cell-food currcell))
          (set-cell-food! currcell null)
          (set-cell-food! currcell (- (cell-food currcell) 1)))
        (set-ant-has-food! a #t)]
-
-      ; Else if ~HF and SP, move to next position along trail (away from home)
-      [(and (not (ant-has-food a))
-            (not (null? adj-phermn-cells)))
-       (let ([farther-pts (filter (lambda (x)
-                                    (> (distance (cell-pt x) (world-home w))
-                                       (distance (ant-pt a) (world-home w)))) 
-                                  adj-phermn-cells)])
+      [(and (not (ant-has-food a)) (not (null? adj-phermn-cells)))      ; Else if ~HF and SP, move to next position along trail (away from home)
+       (let ([farther-pts 
+               (filter (lambda (x) (> (distance (cell-pt x) (world-home w))
+                                      (distance (ant-pt a) (world-home w)))) 
+                       adj-phermn-cells)])
          (if (null? farther-pts)
            (set-ant-pt! a (random-move (ant-pt a) (grid-ncells g)))
-           (set-ant-pt! a (cell-pt (argmax (lambda (x) (cell-phermn x))
-                                           farther-pts)))))]
+           (set-ant-pt! a (cell-pt (argmax (lambda (x) (cell-phermn x)) farther-pts)))))]
 
-      ; Else move random
-      [else 
-        (set-ant-pt! a (random-move (ant-pt a) (grid-ncells g)))
-        ])))
+      [else  ; Else move random
+        (set-ant-pt! a (random-move (ant-pt a) (grid-ncells g)))])))
 
 (define (distance p1 p2)
   (sqrt (+ (expt (- (pt-x p1) (pt-x p2)) 2)
