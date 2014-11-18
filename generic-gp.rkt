@@ -120,25 +120,28 @@
       (let ([t1 (random-term termlist)])
         (match t1
                ['x (leaf 'x)]
-               ['R (leaf (* 3 (random)))]))
+               ['R (leaf (* 3 (random)))]
+               [a  (leaf a)]))
       (let ([f (random-fn ftable)])
         (match f
                [(fn sym 1 _) (branch1 sym (full (add1 level) maxdepth))]
                [(fn sym 2 _) (branch2 sym (full (add1 level) maxdepth)
-                                      (full (add1 level) maxdepth))]))))
+                                          (full (add1 level) maxdepth))]))))
   (define (grow level maxdepth)
     (if (= level maxdepth)
       (let ([t1 (random-term termlist)])
         (match t1 
                ['x (leaf 'x)]
-               ['R (leaf (* 3 (random)))]))
+               ['R (leaf (* 3 (random)))]
+               [a  (leaf a)]))
       (let ([e1 (random-item ftable termlist)])
         (match e1 
                [(fn sym 1 _) (branch1 sym (grow (add1 level) maxdepth))]
                [(fn sym 2 _) (branch2 sym (grow (add1 level) maxdepth)
                                       (grow (add1 level) maxdepth))]
                ['x (leaf 'x)]
-               ['R (leaf (random))]))))
+               ['R (leaf (random))]
+               [a  (leaf a)]))))
 
   (define (ramped-half-and-half popsize)
     (let ([count (/ (/ popsize (- (add1 max-init-tree-height) 2)) 2)])

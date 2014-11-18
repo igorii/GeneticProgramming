@@ -33,6 +33,7 @@
 (define *elitism* #t)
 (define *terminals* (list 'x 'R))
 (define *nfitcases* 100)
+
 (define *func-table* (list (gp:fn 'add 2 r-add)
                            (gp:fn 'sub 2 r-sub)
                            (gp:fn 'mul 2 r-mul)
@@ -79,8 +80,8 @@
                    xmin xmax height width fit)))
 
 (define (start-regression)
-  (let* (;[fn (lambda (x) (+ 1 (+ x (+ (expt (* 2 x) 2) (expt (* 3 x) 3)))))]
-         [fn (lambda (x) (+ (cos x) (* 3 (sin (expt x 2)))))])
+  (let* ([fn (lambda (x) (+ 1 (+ x (+ (expt (* 2 x) 2) (expt (* 3 x) 3)))))])
+         ;[fn (lambda (x) (+ (cos x) (* 3 (sin (expt x 2)))))])
     (gp:generic-gp
       #:population-size *pop-size*
       #:max-init-tree-height *max-init-program-size*
