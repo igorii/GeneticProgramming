@@ -54,14 +54,14 @@
                     (sqr (- (fitcase-output x) rslt)))))
        fitcases))
 
-(define (calc-fitness-from-diffs fitdiffs)
+(define (calc-fitness-from-diffs fitdiffs nfitcases)
   (let ([sum (foldl + 0 (map (lambda (x) (fitcase-output x)) fitdiffs))])
     (sqrt (/ sum *nfitcases*))))
 
-(define (make-fitness-fn fn ftable)
-  (let* ([fitcases (create-fitness-cases fn -5.0 5.0 20)])
+(define (make-fitness-fn fn ftable xmin xmax nfitcases)
+  (let* ([fitcases (create-fitness-cases fn xmin xmax nfitcases)])
     (lambda (program)
-      (calc-fitness-from-diffs (calc-fit-diffs fitcases program ftable)))))
+      (calc-fitness-from-diffs (calc-fit-diffs fitcases program ftable) nfitcases))))
 
 (define eval-form
   (let ((ns (make-base-namespace)))
@@ -89,7 +89,7 @@
       #:terminals *terminals*
       #:mutation-rate *%mutation*
       #:tournament-size *tourny-size*
-      #:fitness-fn (make-fitness-fn fn *func-table*)
+      #:fitness-fn (make-fitness-fn fn *func-table* -5 5 *nfitcases*)
       #:callback (make-callback fn -5 5 600 600 *func-table*))))
 
 (define *window* null)
