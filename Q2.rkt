@@ -56,7 +56,7 @@
 
 (define (calc-fitness-from-diffs fitdiffs nfitcases)
   (let ([sum (foldl + 0 (map (lambda (x) (fitcase-output x)) fitdiffs))])
-    (sqrt (/ sum *nfitcases*))))
+    (sqrt (/ sum nfitcases))))
 
 (define (make-fitness-fn fn ftable xmin xmax nfitcases)
   (let* ([fitcases (create-fitness-cases fn xmin xmax nfitcases)])
