@@ -96,6 +96,7 @@
           #:mutation-rate %mutation
           #:tournament-size tourny-size
           #:fitness-fn calc-fitness
+          #:minimizing [minimizing #t]
           #:callback [callback (lambda (x) x)])
 
   ;; Utils
@@ -103,11 +104,18 @@
   (define (random-fn   ftable)       (car (shuffle ftable)))
   (define (random-term terms)        (car (shuffle terms)))
   (define (random-item ftable terms) (car (shuffle (append ftable terms))))
+  (define sortf
+    (if minimizing
+        (lambda (x y) (< (car x) (car y)))
+        (lambda (x y) (> (car x) (car y)))))
+  (define (get-best fpop)
+    (car (sort fpop sortf)))
 
   (define (selection-tournament fpop tourny-size prob-best)
     (let* ([tpop (take (shuffle fpop) tourny-size)])         ; Select the individuals for tournament
       (if (chance prob-best)
-        (car (sort tpop (lambda (x y) (< (car x) (car y))))) ; bprob % of the time take the best
+        (let ([best (car (sort tpop sortf))])
+          (car (shuffle (filter (lambda (x) (= (car x) (car best))) tpop))))
         (car (shuffle tpop)))))                              ; Otherwise take a random one
 
   (define (create-next-generation mutation% fpop size tourny-size)
@@ -180,7 +188,7 @@
   (define (loop last-best last-pop)
     (let* ([fits (map calc-fitness last-pop)]
            [fpop (map list fits last-pop)]
-           [curr-best (argmin (lambda (x) (car x)) fpop)]
+           [curr-best (get-best fpop)];(argmin (lambda (x) (car x)) fpop)]
            [new-best (if (or (null? last-best) (< (car curr-best) (car last-best))) curr-best last-best)])
       (callback (car new-best) (cadr new-best))
       (loop new-best (cons (cadr new-best) (create-next-generation %mutation fpop popsize tourny-size)))))

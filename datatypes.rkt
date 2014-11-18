@@ -10,10 +10,23 @@
 (provide (struct-out world))
 
 ; ants
-(provide random-move gohome)
+(provide random-move gohome drop-phermn!)
 
 ; grid
 (provide inc-home-food! place-food! get-cell set-cell! make-cells)
+
+; world
+(provide adj-phermn-cells adjacent-cells)
+
+;; utils
+(provide distance eridiv)
+
+(define (idiv   x y) (exact->inexact (/ x y)))
+(define (ridiv  x y) (round (idiv x y)))
+(define (eridiv x y) (inexact->exact (ridiv x y)))
+(define (distance p1 p2)
+  (sqrt (+ (expt (- (pt-x p1) (pt-x p2)) 2)
+           (expt (- (pt-y p1) (pt-y p2)) 2))))
 
 ;; structs
 
@@ -21,13 +34,13 @@
 (struct grid (ncells cellsz dim))
 
 ;; food :: avail : int
-(struct food (avail) #:mutable)
+(struct food (avail) #:mutable #:transparent)
 
 ;; pt :: x : float, y : float
 (struct pt (x y) #:mutable #:transparent)
 
 ;; ant :: pt : pt, has-food : bool
-(struct ant (pt has-food) #:mutable)
+(struct ant (pt has-food) #:mutable #:transparent)
 
 ;; cell :: pt : pt, phermn : int
 (struct cell (pt phermn food) #:mutable)
@@ -38,6 +51,7 @@
 ;; *************************
 ;;       World/Grid
 ;; *************************
+
 
 (define (inc-home-food! w) (set-world-food-at-home! w (add1 (world-food-at-home w))))
 (define (get-cell matrix x y)
@@ -63,6 +77,20 @@
                [y (inexact->exact (floor (* ncells (random))))])
            (update-cell-food! matrix x y amt)))
        (range 0 num)))
+
+(define (adjacent-cells p cells ncells)
+  (let ([l '()])
+    (for ([x (range (sub1 (pt-x p)) (add1 (add1 (pt-x p))))])
+         (for ([y (range (sub1 (pt-y p)) (add1 (add1 (pt-y p))))])
+              (set! l (cons (get-cell cells 
+                                      (modulo x ncells) 
+                                      (modulo y ncells))
+                            l))))
+    l))
+
+(define (adj-phermn-cells p cells ncells)
+  (let ([adjcells (adjacent-cells p cells ncells)])
+    (filter (lambda (x) (not (= 0 (cell-phermn x)))) adjcells)))
 
 ;; *************************
 ;;           Ant
@@ -93,8 +121,16 @@
 (define (random-move pt ncells)
   (move pt (random-direction) ncells))
 
-(define (drop-phermn! ant matrix)
-  null)
+(define (drop-phermn! a g w drop-amt)
+  (let* ([currcell (get-cell (world-cells w) (pt-x (ant-pt a)) (pt-y (ant-pt a)))]
+         [cs (adjacent-cells (ant-pt a) (world-cells w) (grid-ncells g))]
+         [max-amt (world-max-phermn w)])
+    (set-cell-phermn! currcell (min max-amt (+ drop-amt (cell-phermn currcell))))
+    (for ([c cs])
+         (set-cell-phermn! c (min max-amt (+ (eridiv drop-amt 2) (cell-phermn c))))
+         (let ([cs (adjacent-cells (ant-pt a) (world-cells w) (grid-ncells g))])
+           (for ([c cs])
+                (set-cell-phermn! c (min max-amt (+ (eridiv drop-amt 4) (cell-phermn c)))))))))
 
 (define (gohome p home)
   (define (normal x) 
