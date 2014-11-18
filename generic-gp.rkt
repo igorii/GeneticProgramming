@@ -7,6 +7,9 @@
 
 (provide generic-gp eval-symtree symtree->source symtree->proc)
 (provide (struct-out fn))
+(provide (struct-out leaf))
+(provide (struct-out branch1))
+(provide (struct-out branch2))
 
 (struct leaf    (x)       #:transparent #:mutable)
 (struct branch1 (n a1)    #:transparent #:mutable)
