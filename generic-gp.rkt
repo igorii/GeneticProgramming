@@ -138,7 +138,7 @@
         (match e1 
                [(fn sym 1 _) (branch1 sym (grow (add1 level) maxdepth))]
                [(fn sym 2 _) (branch2 sym (grow (add1 level) maxdepth)
-                                      (grow (add1 level) maxdepth))]
+                                          (grow (add1 level) maxdepth))]
                ['x (leaf 'x)]
                ['R (leaf (random))]
                [a  (leaf a)]))))
