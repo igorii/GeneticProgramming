@@ -114,7 +114,6 @@
         (match t1 
                ['x (leaf 'x)]
                ['R (leaf (* 3 (random)))]))
-                     ;(random 5))])) 
       (let ([f (random-fn ftable)])
         (match f 
                [(fn sym 1 _) (branch1 sym (full (add1 level) maxdepth))]
@@ -126,7 +125,6 @@
         (match t1 
                ['x (leaf 'x)]
                ['R (leaf (* 3 (random)))]))
-                     ;(random 5))])) 
       (let ([e1 (random-item ftable termlist)])
         (match e1 
                [(fn sym 1 _) (branch1 sym (grow (add1 level) maxdepth))]
