@@ -32,7 +32,7 @@
   (place-food! *nfood* *food-amt* (grid-ncells *grid*) (world-cells w))
   w)
 
-(define *pop-size* 50)
+(define *pop-size* 200)
 (define *max-generations* 51)
 (define *%crossover* 0.9)
 (define *%mutation* 0.05)
@@ -50,8 +50,8 @@
 (define *func-table* (list (gp:fn 'if-food-here 2 null)
                            (gp:fn 'if-carrying-food 2 null)
                            (gp:fn 'move-to-adjacent-food-else 1 null)
-                           (gp:fn 'move-to-adjacent-phermn-else 1 null)))
-;                           (gp:fn 'progn 2 null)))
+                           (gp:fn 'move-to-adjacent-phermn-else 1 null)
+                           (gp:fn 'progn 2 null)))
 
 (define (make-callback)
   (lambda (fit individual iter)
@@ -62,7 +62,7 @@
     (when (= 0 (modulo iter 10))
       (write-to-file
         (gp:program->string individual)
-        (string-append "NPROGN-GP-" (timestamp) ".s")))
+        (string-append "out/GP-" (timestamp) ".s")))
     (displayln "--------------------------------------------------------------------------------")))
 
 (define eval-form
