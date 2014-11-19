@@ -5,9 +5,9 @@ This is the source for the genetic programming assignment for the COMP 5206 - Ev
 
 There are three programs in this repository:
 
-1) (`Q1.rkt`) A simple ant colony simulation
-2) (`Q2.rkt`) Symbolic Regression using Genetic Programming
-3) (`Q3.rkt`) Ant colony optimization using Genetic Programming
+1. (`Q1.rkt`) A simple ant colony simulation
+2. (`Q2.rkt`) Symbolic Regression using Genetic Programming
+3. (`Q3.rkt`) Ant colony optimization using Genetic Programming
 
 To run any of the questions, just run the corresponding file:
 
