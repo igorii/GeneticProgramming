@@ -16,7 +16,7 @@
 (provide inc-home-food! place-food! get-cell set-cell! make-cells)
 
 ; world
-(provide adj-phermn-cells adjacent-cells)
+(provide decay-phermn! adj-phermn-cells adjacent-cells)
 
 ;; utils
 (provide distance eridiv)
@@ -51,6 +51,13 @@
 ;; *************************
 ;;       World/Grid
 ;; *************************
+
+(define (decay-phermn! matrix ncells decay-amt)
+  (for ([i (range 0 ncells)])
+       (for ([j (range 0 ncells)])
+            (let ([c (get-cell matrix i j)])
+              (when (not (= 0 (cell-phermn c)))
+                (set-cell-phermn! c (max 0 (- (cell-phermn c) decay-amt))))))))
 
 
 (define (inc-home-food! w) (set-world-food-at-home! w (add1 (world-food-at-home w))))

@@ -12,17 +12,16 @@
 ;; Add GUI elements
 ;; ****************
 
-(define (create-window alabel awidth aheight)
-  (printf "Creating window of size (~a, ~a)\n" awidth aheight)
-  (let* ([frame      (new frame% [label alabel] [width awidth] [height aheight])]
+(define (create-window alabel fwidth fheight cwidth cheight)
+  (let* ([frame      (new frame% [label alabel] [width fwidth] [height fheight])]
          [main-panel (new horizontal-panel%
                           [parent frame]
-                          [min-width awidth]
-                          [min-height aheight])]
+                          [min-width fwidth]
+                          [min-height fheight])]
          [canvas     (instantiate animated-canvas% (main-panel) 
                                   [style '(border)]
-                                  [min-width awidth]
-                                  [min-height aheight])])
+                                  [min-width cwidth]
+                                  [min-height cheight])])
     ;(send canvas set-canvas-background (make-color 0 0 0))
     (window frame main-panel canvas)))
 

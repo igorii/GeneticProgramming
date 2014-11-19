@@ -70,7 +70,7 @@
       (eval `(lambda (x) ,form) ns))))
 
 (define (make-callback target xmin xmax height width ftable)
-  (lambda (fit individual)
+  (lambda (fit individual iter)
     (displayln "--------------------------------------------------------------------------------")
     (displayln fit)
     (pretty-print (gp:symtree->source individual))
@@ -80,8 +80,8 @@
                    xmin xmax height width fit)))
 
 (define (start-regression)
-  (let* ([fn (lambda (x) (+ 1 (+ x (+ (expt (* 2 x) 2) (expt (* 3 x) 3)))))])
-         ;[fn (lambda (x) (+ (cos x) (* 3 (sin (expt x 2)))))])
+  (let* (;[fn (lambda (x) (+ 1 (+ x (+ (expt (* 2 x) 2) (expt (* 3 x) 3)))))])
+         [fn (lambda (x) (+ (cos x) (* 3 (sin (expt x 2)))))])
     (gp:generic-gp
       #:population-size *pop-size*
       #:max-init-tree-height *max-init-program-size*
@@ -95,7 +95,7 @@
 
 (define *window* null)
 (define (main)
-  (let ([app-window (create-window "Symbolic Regression" 600 600)])
+  (let ([app-window (create-window "Symbolic Regression" 600 600 600 600)])
     (set! *window* app-window)
     (start-gui app-window)
     (thread start-regression)))

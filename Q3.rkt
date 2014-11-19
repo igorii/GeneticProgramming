@@ -1,22 +1,23 @@
 #lang racket
 
+(require racket/date)
 (require racket/pretty)
 (require racket/gui/base)
 (require racket/match)
 (require (prefix-in gp: "generic-gp.rkt"))
 (require "generic-window.rkt")
-(require "regression-drawing.rkt")
+(require "ant-drawing.rkt")
 (require "datatypes.rkt")
 
-(define *grid* (grid 50 6 (* 6 50)))
-(define *nfood* 20)
+(define *grid* (grid 70 6 (* 6 50)))
+(define *nfood* 35)
 (define *food-amt* 50)
-(define *nants* 100)
+(define *nants* 40)
 (define *window* null)
 (define *next-timestamp* (current-milliseconds))
 (define *fps* (quotient 1000 40))
-(define *decay-amt* 5)
-(define *drop-amt* 5)
+(define *decay-amt* 6)
+(define *drop-amt* 9)
 (define *max-amt* 255)
 
 (define *homept* (/ (grid-ncells *grid*) 2))
@@ -31,7 +32,7 @@
   (place-food! *nfood* *food-amt* (grid-ncells *grid*) (world-cells w))
   w)
 
-(define *pop-size* 100)
+(define *pop-size* 50)
 (define *max-generations* 51)
 (define *%crossover* 0.9)
 (define *%mutation* 0.05)
@@ -41,24 +42,28 @@
 (define *max-run-program-size* 17)
 (define *tourny-size* 7)
 (define *elitism* #t)
-;(define *terminals* (list 'move-random
-;                          'move-to-nest
-;                          'pick-up
-;                          'drop-phermn))
-(define *terminals* (list 'pick-up 'move-random))
+(define *terminals* (list 'move-random
+                          'move-to-nest
+                          'pick-up
+                          'drop-phermn))
 
-;(define *func-table* (list (gp:fn 'if-food-here 2 null)
-;                           (gp:fn 'if-carrying-food 2 null)
-;                           (gp:fn 'move-to-adjacent-food-else 1 null)
-;                           (gp:fn 'move-to-adjacent-phermn-else 1 null)
+(define *func-table* (list (gp:fn 'if-food-here 2 null)
+                           (gp:fn 'if-carrying-food 2 null)
+                           (gp:fn 'move-to-adjacent-food-else 1 null)
+                           (gp:fn 'move-to-adjacent-phermn-else 1 null)))
 ;                           (gp:fn 'progn 2 null)))
-(define *func-table* (list (gp:fn 'progn 2 null)))
 
 (define (make-callback)
-  (lambda (fit individual)
+  (lambda (fit individual iter)
+    (displayln "")
     (displayln "--------------------------------------------------------------------------------")
     (displayln fit)
-    (pretty-print individual)))
+    (pretty-print individual)
+    (when (= 0 (modulo iter 10))
+      (write-to-file
+        (gp:program->string individual)
+        (string-append "NPROGN-GP-" (timestamp) ".s")))
+    (displayln "--------------------------------------------------------------------------------")))
 
 (define eval-form
   (let ((ns (make-base-namespace)))
@@ -132,36 +137,76 @@
          [(gp:branch2 'if-carrying-food a1 a2)           (r-if-carrying-food a w a1 a2)]
          [(gp:branch2 'progn a1 a2)                      (r-progn a w a1 a2)]))
 
-(define (make-fitness-fn iterations x)
-  (lambda (program)
-    (define (loop iter w)
+(define (run-simulation pausefn callback iterations program w)
+  (define (loop iter w)
+    (if (pausefn)
+      (loop iter w)
       (if (<= iter 0)
-        (begin 
-          (displayln (list "  Fitness : " (world-food-at-home w)))
-          (world-food-at-home w)
-         )
-
         (begin
+          (display (string-append (number->string
+                                    (world-food-at-home w)) " "))
+          (callback w)
+          (world-food-at-home w))
+        (begin
+          (callback w)
+          (decay-phermn! (world-cells w) (grid-ncells *grid*) *decay-amt*)
           (for ([a (world-ants w)])
                (run-symtree! a w program)
-               (when (ant-has-food a) ;(equal? (ant-pt a) (world-home w)))
+               (when (and (ant-has-food a) (equal? (ant-pt a) (world-home w)))
                  (inc-home-food! w)
                  (set-ant-has-food! a #f)))
-          (loop (sub1 iter) w))))
-    (loop iterations (make-world))))
+          (loop (sub1 iter) w)))))
+  (loop iterations w))
+
+(define (make-fitness-fn iterations x)
+  (lambda (program)
+    (run-simulation (lambda () #f) (lambda (x) x) iterations program (make-world))))
+
+(define (timestamp)
+  (let ([d (current-date)])
+    (string-append
+      (number->string (date-year d))   "-"
+      (number->string (date-month d))  "-"
+      (number->string (date-day d))    "T"
+      (number->string (date-hour d))   "-"
+      (number->string (date-minute d)) "-"
+      (number->string (date-second d)))))
+
+(define (present-program program iterations)
+  (define (go)
+    (run-simulation
+      (lambda ()
+        (if (> (current-milliseconds) *next-timestamp*)
+          (begin 
+            (set! *next-timestamp* 
+              (+ *fps* (current-milliseconds)))
+            #f)
+          #t))
+      (lambda (w)
+        (draw-world (window-canvas *window*) *grid* w))
+      iterations
+      program
+      (make-world)))
+  (let ([app-window (create-window "Ant Colony" 700 (grid-dim *grid*) (grid-dim *grid*) (grid-dim *grid*))])
+    (write-to-file (gp:program->string program) (string-append "GP-" (timestamp) ".s"))
+    (set! *window* app-window)
+    (start-gui app-window)
+    (thread go)))
 
 (define (start-regression)
-  (gp:generic-gp
-    #:population-size *pop-size*
-    #:minimizing #f
-    #:max-init-tree-height *max-init-program-size*
-    #:max-run-tree-height *max-run-program-size*
-    #:function-table *func-table*
-    #:terminals *terminals*
-    #:mutation-rate *%mutation*
-    #:tournament-size *tourny-size*
-    #:fitness-fn (make-fitness-fn 500 null)
-    #:callback (make-callback)))
+  (let ([best (gp:generic-gp
+                #:population-size *pop-size*
+                #:minimizing #f
+                #:max-init-tree-height *max-init-program-size*
+                #:max-run-tree-height *max-run-program-size*
+                #:function-table *func-table*
+                #:terminals *terminals*
+                #:mutation-rate *%mutation*
+                #:tournament-size *tourny-size*
+                #:fitness-fn (make-fitness-fn 200 null)
+                #:generations -1
+                #:callback (make-callback))])
+    (present-program (cadr best) 200)))
 
 (define (main) (start-regression))
 (main)

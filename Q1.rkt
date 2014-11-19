@@ -1,5 +1,6 @@
 #lang racket
 
+(require racket/gui/base)
 (require "generic-window.rkt")
 (require "ant-drawing.rkt")
 (require "datatypes.rkt")
@@ -14,8 +15,6 @@
 (define *decay-amt* 5)
 (define *drop-amt* 5)
 (define *max-amt* 255)
-
-
 
 (define (update-ant! a g w)
   ;; HF = has food, SF = sense food, SP = sense phermn, AH = at home
@@ -45,15 +44,8 @@
       [else  ; Else move random
         (set-ant-pt! a (random-move (ant-pt a) (grid-ncells g)))])))
 
-(define (decay-phermn! matrix ncells)
-  (for ([i (range 0 ncells)])
-       (for ([j (range 0 ncells)])
-            (let ([c (get-cell matrix i j)])
-              (when (not (= 0 (cell-phermn c)))
-                (set-cell-phermn! c (max 0 (- (cell-phermn c) *decay-amt*))))))))
-
 (define (update-world g w)
-  (decay-phermn! (world-cells w) (grid-ncells g))
+  (decay-phermn! (world-cells w) (grid-ncells g) *decay-amt*)
   (for ([a (world-ants w)])
        (update-ant! a g w))
   w)
@@ -78,7 +70,9 @@
     (main-loop *grid* w)))
 
 (define (main)
-  (let ([app-window (create-window "Ant Colony" (grid-dim *grid*) (grid-dim *grid*))])
+  (let* ([app-window (create-window "Ant Colony" 700 (grid-dim *grid*) (grid-dim *grid*) (grid-dim *grid*))]
+         [option-panel (new vertical-panel% [parent (window-panel app-window)])])
+    (define pause-btn (new button% [parent option-panel] [label "Play/Pause"]))
     (set! *window* app-window)
     (start-gui app-window)
     (thread start-colony)))
