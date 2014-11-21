@@ -142,10 +142,10 @@
          [(gp:branch2 'progn a1 a2)                      (r-progn a w a1 a2)]))
 
 (define (run-simulation pausefn callback iterations program w)
-  (define (cb w)
+  (define (cb w i)
     (display (string-append (number->string (world-food-at-home w)) " "))
     (flush-output)
-    (callback w)
+    (callback w i)
     (world-food-at-home w))
 
   (define (loop iter w)
@@ -154,7 +154,7 @@
       (if (<= iter 0)
         (cb w)
         (begin
-          (callback w)
+          (callback w iter)
           (decay-phermn! (world-cells w) (grid-ncells *grid*) *decay-amt*)
           (let ([finished #f])
             (for ([a (world-ants w)])
@@ -171,7 +171,7 @@
 
 (define (make-fitness-fn iterations x)
   (lambda (program)
-    (run-simulation (lambda () #f) (lambda (x) x) iterations program (make-world))))
+    (run-simulation (lambda () #f) (lambda (x i) x) iterations program (make-world))))
 
 (define (timestamp)
   (let ([d (current-date)])
@@ -193,11 +193,12 @@
               (+ *fps* (current-milliseconds)))
             #f)
           #t))
-      (lambda (w)
-        (draw-world (window-canvas *window*) *grid* w))
+      (lambda (w i)
+        (draw-world (window-canvas *window*) *grid* w i))
       iterations
       program
       (make-world)))
+
   (let ([app-window (create-window "Ant Colony" 700 (grid-dim *grid*) (grid-dim *grid*) (grid-dim *grid*))])
     (write-to-file (gp:program->string program) (string-append "GP-" (timestamp) ".s"))
     (set! *window* app-window)

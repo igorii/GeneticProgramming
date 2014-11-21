@@ -108,10 +108,10 @@
         (begin
           (display (string-append (number->string
                                     (world-food-at-home w)) " "))
-          (callback w)
+          (callback w iter)
           (world-food-at-home w))
         (begin
-          (callback w)
+          (callback w iter)
           (decay-phermn! (world-cells w) (grid-ncells *grid*) *decay-amt*)
           (for ([a (world-ants w)])
                (run-symtree! a w program)
@@ -129,7 +129,7 @@
           (begin (set! *next-timestamp* (+ *fps* (current-milliseconds)))
                  #f)
           #t))
-      (lambda (w) (draw-world (window-canvas *window*) *grid* w))
+      (lambda (w i) (draw-world (window-canvas *window*) *grid* w i))
       iterations
       program
       (make-world)))
