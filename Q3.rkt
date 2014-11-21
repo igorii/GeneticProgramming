@@ -32,7 +32,7 @@
   (place-food! *nfood* *food-amt* (grid-ncells *grid*) (world-cells w))
   w)
 
-(define *pop-size* 200)
+(define *pop-size* 50)
 (define *max-generations* 51)
 (define *%crossover* 0.9)
 (define *%mutation* 0.05)
@@ -71,9 +71,11 @@
       (eval `(lambda (a w) ,form) ns))))
 
 (define (r-move-random a w)
+  (set-ant-steps! a (add1 (ant-steps a)))
   (set-ant-pt! a (random-move (ant-pt a) (grid-ncells *grid*))))
 
 (define (r-move-to-nest a w)
+  (set-ant-steps! a (add1 (ant-steps a)))
   (set-ant-pt! a (gohome (ant-pt a) (world-home w))))
 
 (define (r-pick-up a w)
@@ -93,6 +95,7 @@
          [cellswithfood (filter (lambda (x) (not (null? (cell-food x)))) adjcells)])
     (if (not (null? cellswithfood))
       (let ([foodcell (car cellswithfood)])
+        (set-ant-steps! a (add1 (ant-steps a)))
         (set-ant-pt! a (cell-pt foodcell)))
       (run-symtree! a w sym1))))
 
@@ -105,6 +108,7 @@
               (filter (lambda (x) (> (distance (cell-pt x) (world-home w))
                                      (distance (ant-pt a)  (world-home w))))
                       adj-phermn-cells)])
+        (set-ant-steps! a (add1 (ant-steps a)))
         (if (null? farther-pts)
           (set-ant-pt! a (random-move (ant-pt a) (grid-ncells *grid*)))
           (set-ant-pt! a (cell-pt (argmax (lambda (x) (cell-phermn x)) farther-pts))))))))
@@ -145,6 +149,7 @@
         (begin
           (display (string-append (number->string
                                     (world-food-at-home w)) " "))
+          (flush-output)
           (callback w)
           (world-food-at-home w))
         (begin
@@ -204,7 +209,7 @@
                 #:mutation-rate *%mutation*
                 #:tournament-size *tourny-size*
                 #:fitness-fn (make-fitness-fn 200 null)
-                #:generations -1
+                #:generations 2
                 #:callback (make-callback))])
     (present-program (cadr best) 200)))
 

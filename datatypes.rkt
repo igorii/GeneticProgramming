@@ -40,7 +40,7 @@
 (struct pt (x y) #:mutable #:transparent)
 
 ;; ant :: pt : pt, has-food : bool
-(struct ant (pt has-food) #:mutable #:transparent)
+(struct ant (pt has-food [steps #:auto]) #:auto-value 0 #:mutable #:transparent)
 
 ;; cell :: pt : pt, phermn : int
 (struct cell (pt phermn food) #:mutable)
