@@ -62,7 +62,7 @@
     (when (= 0 (modulo iter 10))
       (write-to-file
         (gp:program->string individual)
-        (string-append "out/GP-" (timestamp) ".s")))
+        (string-append "out/GP-" (number->string fit) "-" (timestamp) ".s")))
     (displayln "--------------------------------------------------------------------------------")))
 
 (define eval-form
@@ -142,25 +142,31 @@
          [(gp:branch2 'progn a1 a2)                      (r-progn a w a1 a2)]))
 
 (define (run-simulation pausefn callback iterations program w)
+  (define (cb w)
+    (display (string-append (number->string (world-food-at-home w)) " "))
+    (flush-output)
+    (callback w)
+    (world-food-at-home w))
+
   (define (loop iter w)
     (if (pausefn)
       (loop iter w)
       (if (<= iter 0)
-        (begin
-          (display (string-append (number->string
-                                    (world-food-at-home w)) " "))
-          (flush-output)
-          (callback w)
-          (world-food-at-home w))
+        (cb w)
         (begin
           (callback w)
           (decay-phermn! (world-cells w) (grid-ncells *grid*) *decay-amt*)
-          (for ([a (world-ants w)])
-               (run-symtree! a w program)
-               (when (and (ant-has-food a) (equal? (ant-pt a) (world-home w)))
-                 (inc-home-food! w)
-                 (set-ant-has-food! a #f)))
-          (loop (sub1 iter) w)))))
+          (let ([finished #f])
+            (for ([a (world-ants w)])
+                 #:break finished
+                 (run-symtree! a w program)
+                 (when (and (ant-has-food a) (equal? (ant-pt a) (world-home w)))
+                   (inc-home-food! w)
+                   (set-ant-has-food! a #f))
+                 (when (>= (ant-steps a) iterations) (set! finished #t)))
+            (if finished 
+              (cb w)
+              (loop (sub1 iter) w)))))))
   (loop iterations w))
 
 (define (make-fitness-fn iterations x)
