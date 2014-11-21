@@ -5,6 +5,9 @@
 (require "ant-drawing.rkt")
 (require "datatypes.rkt")
 
+;; GUI vars
+(define *pause* #f)
+
 (define *grid* (grid 60 6 (* 6 60)))
 (define *nfood* 20)
 (define *food-amt* 50)
@@ -51,9 +54,9 @@
   w)
 
 (define (main-loop grid w)
-  (when (> (current-milliseconds) *next-timestamp*)
+  (when (and (not *pause*) (> (current-milliseconds) *next-timestamp*))
     (set! w (update-world grid w))
-    (draw-world (window-canvas *window*) grid w)
+    (draw-world (window-canvas *window*) grid w -1)
     (set! *next-timestamp* (+ *fps* (current-milliseconds))))
   (main-loop grid w))
 
@@ -72,7 +75,8 @@
 (define (main)
   (let* ([app-window (create-window "Ant Colony" 700 (grid-dim *grid*) (grid-dim *grid*) (grid-dim *grid*))]
          [option-panel (new vertical-panel% [parent (window-panel app-window)])])
-    (define pause-btn (new button% [parent option-panel] [label "Play/Pause"]))
+    (define pause-btn (new button% [parent option-panel] [label "Play/Pause"]
+                           [callback (lambda (button event) (set! *pause* (not *pause*)))]))
     (set! *window* app-window)
     (start-gui app-window)
     (thread start-colony)))
