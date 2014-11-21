@@ -64,7 +64,7 @@
   (let* ([homept (/ (grid-ncells *grid*) 2)]
          [w (world 0
                    (pt homept homept) 
-                   (map (lambda (_) (ant (pt homept homept) #f)) 
+                   (map (lambda (_) (ant (pt homept homept) #f))
                         (range 0 *nants*)) 
                    null
                    (make-cells (grid-ncells *grid*))

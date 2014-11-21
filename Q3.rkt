@@ -19,6 +19,7 @@
 (define *decay-amt* 6)
 (define *drop-amt* 9)
 (define *max-amt* 255)
+(define *steps* 200)
 
 (define *homept* (/ (grid-ncells *grid*) 2))
 
@@ -32,7 +33,7 @@
   (place-food! *nfood* *food-amt* (grid-ncells *grid*) (world-cells w))
   w)
 
-(define *pop-size* 50)
+(define *pop-size* 100)
 (define *max-generations* 51)
 (define *%crossover* 0.9)
 (define *%mutation* 0.05)
@@ -152,7 +153,7 @@
     (if (pausefn)
       (loop iter w)
       (if (<= iter 0)
-        (cb w)
+        (cb w iter)
         (begin
           (callback w iter)
           (decay-phermn! (world-cells w) (grid-ncells *grid*) *decay-amt*)
@@ -165,7 +166,7 @@
                    (set-ant-has-food! a #f))
                  (when (>= (ant-steps a) iterations) (set! finished #t)))
             (if finished 
-              (cb w)
+              (cb w iter)
               (loop (sub1 iter) w)))))))
   (loop iterations w))
 
@@ -215,10 +216,10 @@
                 #:terminals *terminals*
                 #:mutation-rate *%mutation*
                 #:tournament-size *tourny-size*
-                #:fitness-fn (make-fitness-fn 200 null)
-                #:generations 2
+                #:fitness-fn (make-fitness-fn *steps* null)
+                #:generations *max-generations*
                 #:callback (make-callback))])
-    (present-program (cadr best) 200)))
+    (present-program (cadr best) *steps*)))
 
 (define (main) (start-regression))
 (main)
