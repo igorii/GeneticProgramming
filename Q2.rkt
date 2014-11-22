@@ -19,7 +19,7 @@
     (let ([t (expt a b)])
       (if (not (complex? t)) t 1))))
 
-(define *pop-size* 1000)
+(define *pop-size* 500)
 (define *success* 20)
 (define *precision* 0.001)
 (define *max-generations* 51)
@@ -95,7 +95,7 @@
 
 (define *window* null)
 (define (main)
-  (let ([app-window (create-window "Symbolic Regression" 600 600 600 600)])
+  (let ([app-window (create-window "Symbolic Regression" 600 600 600 600 (lambda (e) null))])
     (set! *window* app-window)
     (start-gui app-window)
     (thread start-regression)))

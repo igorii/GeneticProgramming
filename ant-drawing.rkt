@@ -49,7 +49,7 @@
 
 (define (draw-home dc sz home)
   (send dc set-brush purple-brush)
-  (send dc draw-rectangle 
+  (send dc draw-ellipse 
         (* sz (pt-x home)) 
         (* sz (pt-y home))
         sz sz))

@@ -12,11 +12,14 @@
 ; ants
 (provide random-move gohome drop-phermn!)
 
+; cell
+(provide update-cell-food!)
+
 ; grid
 (provide inc-home-food! place-food! get-cell set-cell! make-cells)
 
 ; world
-(provide blank-world copy-world decay-phermn! adj-phermn-cells adjacent-cells)
+(provide set-world-ants! blank-world copy-world decay-phermn! adj-phermn-cells adjacent-cells)
 
 ;; utils
 (provide distance eridiv)

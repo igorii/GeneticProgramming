@@ -12,17 +12,21 @@
 ;; Add GUI elements
 ;; ****************
 
-(define (create-window alabel fwidth fheight cwidth cheight)
+(define (create-window alabel fwidth fheight cwidth cheight event-handler)
+  (define event-canvas%
+    (class animated-canvas%
+           (override on-event)
+           (define on-event (lambda (e) (event-handler e)))
+           (super-instantiate ())))
   (let* ([frame      (new frame% [label alabel] [width fwidth] [height fheight])]
          [main-panel (new horizontal-panel%
                           [parent frame]
                           [min-width fwidth]
                           [min-height fheight])]
-         [canvas     (instantiate animated-canvas% (main-panel) 
+         [canvas     (instantiate event-canvas% (main-panel) 
                                   [style '(border)]
                                   [min-width cwidth]
                                   [min-height cheight])])
-    ;(send canvas set-canvas-background (make-color 0 0 0))
     (window frame main-panel canvas)))
 
 (define (start-gui awindow)

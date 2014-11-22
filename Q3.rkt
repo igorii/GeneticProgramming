@@ -195,7 +195,11 @@
       program
       (make-world)))
 
-  (let ([app-window (create-window "Ant Colony" 700 (grid-dim *grid*) (grid-dim *grid*) (grid-dim *grid*))])
+  (let ([app-window (create-window "Ant Colony" 700 
+                                   (grid-dim *grid*) 
+                                   (grid-dim *grid*) 
+                                   (grid-dim *grid*)
+                                   (lambda (e) null))])
     (write-to-file (gp:program->string program) (string-append "GP-" (timestamp) ".s"))
     (set! *window* app-window)
     (start-gui app-window)

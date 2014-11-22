@@ -16,7 +16,6 @@
 (define *decay-amt*     5)
 (define *current-world* null)
 (define *init-world*    null)
-
 (define *grid* (grid 60 6 (* 6 60)))
 (define *next-timestamp* (current-milliseconds))
 (define *fps* (quotient 1000 40))
@@ -56,6 +55,13 @@
        (update-ant! a g w))
   w)
 
+(define (reset-ants! w)
+  (set-world-ants! w (map (lambda (x) (ant (world-home w) #f)) (range 0 *nants*))))
+
+;; *****************
+;;       GUI
+;; *****************
+
 (define (main-loop grid w)
   (when (> (current-milliseconds) *next-timestamp*)
     (draw-world (window-canvas *window*) grid *current-world* -1)
@@ -82,16 +88,34 @@
   (set! *gui-thread* (thread start-colony)))
 
 (define (main)
-  (let* ([app-window (create-window "Ant Colony" 700 (grid-dim *grid*) (grid-dim *grid*) (grid-dim *grid*))]
+  (let* ([app-window (create-window 
+                       "Ant Colony" 700
+                       (grid-dim *grid*)
+                       (grid-dim *grid*)
+                       (grid-dim *grid*)
+                       (lambda (e)
+                         (when (eq? 'left-down (send e get-event-type))
+                           (let* ([cellsz (grid-cellsz *grid*)]
+                                  [ncells (grid-ncells *grid*)]
+                                  [x (inexact->exact (floor (/ (send e get-x) cellsz)))]
+                                  [y (inexact->exact (floor (/ (send e get-y) cellsz)))])
+                             (when (and (< x ncells) (< y ncells))
+                               (update-cell-food! (world-cells *current-world*) x y *food-amt*)
+                               (set! *init-world* (copy-world *current-world*)))))))]
          [option-panel (new vertical-panel% [parent (window-panel app-window)])])
     (define pause-btn (new button%
                            [parent option-panel]
                            [label "Play/Pause"]
-                           [callback (lambda (button event) (set! *gui-pause* (not *gui-pause*)))]))
+                           [callback (lambda (button event) 
+                                       (set! *gui-pause* (not *gui-pause*)))]))
     (define restart (new button% 
                          [parent option-panel]
                          [label "Restart"]
-                         [callback (lambda (button event) (set! *current-world* (copy-world *init-world*)))]));(new-run-thread #f))]))
+                         [callback (lambda (button event)
+                                     (when (not (null? *init-world*))
+                                       (set! *current-world* (copy-world *init-world*))
+                                       (reset-ants! *current-world*)
+                                       (set! *gui-pause* #f)))]))
     (define randomize (new button% 
                            [parent option-panel]
                            [label "Randomize"]
@@ -99,49 +123,54 @@
                                        (set! *current-world* (new-world-with-food))
                                        (set! *init-world* (copy-world (new-world-with-food))))]))
     (define clear (new button% 
-                           [parent option-panel]
-                           [label "Clear"]
-                           [callback (lambda (button event) 
-                                       (let* ([homept (/ (grid-ncells *grid*) 2)])
-                                         (set! *gui-pause* #t)
-                                         (set! *current-world* 
-                                           (blank-world *nants* homept 
-                                                        (grid-ncells *grid*) *max-amt*))))]))
+                       [parent option-panel]
+                       [label "Clear"]
+                       [callback (lambda (button event) 
+                                   (let* ([homept (/ (grid-ncells *grid*) 2)])
+                                     (set! *gui-pause* #t)
+                                     (set! *current-world* 
+                                       (blank-world *nants* homept 
+                                                    (grid-ncells *grid*) *max-amt*))))]))
     (define ant-slider (new slider% 
                             [parent option-panel]
                             [label "# Ants"]
                             [min-value 0]
                             [max-value 100]
                             [init-value *nants*]
-                            [callback (lambda (choice event) (set! *nants* (send choice get-value)))]))
+                            [callback (lambda (choice event) 
+                                        (set! *nants* (send choice get-value)))]))
     (define nfood-slider (new slider% 
-                            [parent option-panel]
-                            [label "# Random Food"]
-                            [min-value 0]
-                            [max-value 100]
-                            [init-value *nfood*]
-                            [callback (lambda (choice event) (set! *nfood* (send choice get-value)))]))
+                              [parent option-panel]
+                              [label "# Random Food"]
+                              [min-value 0]
+                              [max-value 100]
+                              [init-value *nfood*]
+                              [callback (lambda (choice event) 
+                                          (set! *nfood* (send choice get-value)))]))
     (define food-size-slider (new slider% 
                                   [parent option-panel]
                                   [label "Size of Food"]
                                   [min-value 0]
                                   [max-value 100]
                                   [init-value *food-amt*]
-                                  [callback (lambda (choice event) (set! *food-amt* (send choice get-value)))]))
+                                  [callback (lambda (choice event) 
+                                              (set! *food-amt* (send choice get-value)))]))
     (define drop-slider (new slider% 
                              [parent option-panel]
                              [label "Drop rate"]
                              [min-value 0]
                              [max-value 100]
                              [init-value *drop-amt*]
-                             [callback (lambda (choice event) (set! *drop-amt* (send choice get-value)))]))
+                             [callback (lambda (choice event) 
+                                         (set! *drop-amt* (send choice get-value)))]))
     (define evap-slider (new slider% 
                              [parent option-panel]
                              [label "Evaporation rate"]
                              [min-value 0]
                              [max-value 100]
                              [init-value *decay-amt*]
-                             [callback (lambda (choice event) (set! *decay-amt* (send choice get-value)))]))
+                             [callback (lambda (choice event) 
+                                         (set! *decay-amt* (send choice get-value)))]))
     (set! *window* app-window)
     (start-gui app-window)
     (new-run-thread #t)))

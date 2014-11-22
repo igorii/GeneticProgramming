@@ -132,7 +132,7 @@
       iterations
       program
       (make-world)))
-  (let ([app-window (create-window "Ant Colony" 700 (grid-dim *grid*) (grid-dim *grid*) (grid-dim *grid*))])
+  (let ([app-window (create-window "Ant Colony" 700 (grid-dim *grid*) (grid-dim *grid*) (grid-dim *grid*) (lambda (e) null))])
     (set! *window* app-window)
     (start-gui app-window)
     (thread go)))
