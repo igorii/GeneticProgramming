@@ -20,16 +20,10 @@
 (define *drop-amt* 9)
 (define *max-amt* 255)
 (define *steps* 200)
-
 (define *homept* (/ (grid-ncells *grid*) 2))
 
 (define (make-world)
-  (define w (world 0 (pt *homept* *homept*)
-                   (map (lambda (_) (ant (pt *homept* *homept*) #f))
-                        (range 0 *nants*))
-                   null
-                   (make-cells (grid-ncells *grid*))
-                   *max-amt*))
+  (define w (blank-world *nants* *homept* (grid-ncells *grid*) *max-amt*))
   (place-food! *nfood* *food-amt* (grid-ncells *grid*) (world-cells w))
   w)
 
@@ -43,6 +37,7 @@
 (define *max-run-program-size* 17)
 (define *tourny-size* 7)
 (define *elitism* #t)
+(define *init-world* (blank-world))
 (define *terminals* (list 'move-random
                           'move-to-nest
                           'pick-up

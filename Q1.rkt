@@ -6,17 +6,20 @@
 (require "datatypes.rkt")
 
 ;; GUI vars
-(define *pause* #f)
+(define *window*     null)
+(define *gui-thread* null)
+(define *gui-pause*    #t)
+(define *nants*        50)
+(define *nfood*        20)
+(define *food-amt*     50)
+(define *drop-amt*      5)
+(define *decay-amt*     5)
+(define *current-world* null)
+(define *init-world*    null)
 
 (define *grid* (grid 60 6 (* 6 60)))
-(define *nfood* 20)
-(define *food-amt* 50)
-(define *nants* 50)
-(define *window* null)
 (define *next-timestamp* (current-milliseconds))
 (define *fps* (quotient 1000 40))
-(define *decay-amt* 5)
-(define *drop-amt* 5)
 (define *max-amt* 255)
 
 (define (update-ant! a g w)
@@ -54,31 +57,93 @@
   w)
 
 (define (main-loop grid w)
-  (when (and (not *pause*) (> (current-milliseconds) *next-timestamp*))
-    (set! w (update-world grid w))
-    (draw-world (window-canvas *window*) grid w -1)
-    (set! *next-timestamp* (+ *fps* (current-milliseconds))))
+  (when (> (current-milliseconds) *next-timestamp*)
+    (draw-world (window-canvas *window*) grid *current-world* -1)
+    (set! *next-timestamp* (+ *fps* (current-milliseconds)))
+    (when (not *gui-pause*)
+      (set! *current-world* (update-world grid *current-world*))))
   (main-loop grid w))
 
 (define (start-colony)
   (let* ([homept (/ (grid-ncells *grid*) 2)]
-         [w (world 0
-                   (pt homept homept) 
-                   (map (lambda (_) (ant (pt homept homept) #f))
-                        (range 0 *nants*)) 
-                   null
-                   (make-cells (grid-ncells *grid*))
-                   *max-amt*)])
+         [w (blank-world *nants* homept (grid-ncells *grid*) *max-amt*)])
+    (set! *current-world* (copy-world w))
+    (main-loop *grid* *current-world*)))
+
+(define (new-world-with-food)
+  (let* ([homept (/ (grid-ncells *grid*) 2)]
+         [w (blank-world *nants* homept (grid-ncells *grid*) *max-amt*)])
     (place-food! *nfood* *food-amt* (grid-ncells *grid*) (world-cells w))
-    (main-loop *grid* w)))
+    w))
+
+(define (new-run-thread paused)
+  (if (thread? *gui-thread*) (kill-thread *gui-thread*) null)
+  (set! *gui-pause* paused)
+  (set! *gui-thread* (thread start-colony)))
 
 (define (main)
   (let* ([app-window (create-window "Ant Colony" 700 (grid-dim *grid*) (grid-dim *grid*) (grid-dim *grid*))]
          [option-panel (new vertical-panel% [parent (window-panel app-window)])])
-    (define pause-btn (new button% [parent option-panel] [label "Play/Pause"]
-                           [callback (lambda (button event) (set! *pause* (not *pause*)))]))
+    (define pause-btn (new button%
+                           [parent option-panel]
+                           [label "Play/Pause"]
+                           [callback (lambda (button event) (set! *gui-pause* (not *gui-pause*)))]))
+    (define restart (new button% 
+                         [parent option-panel]
+                         [label "Restart"]
+                         [callback (lambda (button event) (set! *current-world* (copy-world *init-world*)))]));(new-run-thread #f))]))
+    (define randomize (new button% 
+                           [parent option-panel]
+                           [label "Randomize"]
+                           [callback (lambda (button event) 
+                                       (set! *current-world* (new-world-with-food))
+                                       (set! *init-world* (copy-world (new-world-with-food))))]))
+    (define clear (new button% 
+                           [parent option-panel]
+                           [label "Clear"]
+                           [callback (lambda (button event) 
+                                       (let* ([homept (/ (grid-ncells *grid*) 2)])
+                                         (set! *gui-pause* #t)
+                                         (set! *current-world* 
+                                           (blank-world *nants* homept 
+                                                        (grid-ncells *grid*) *max-amt*))))]))
+    (define ant-slider (new slider% 
+                            [parent option-panel]
+                            [label "# Ants"]
+                            [min-value 0]
+                            [max-value 100]
+                            [init-value *nants*]
+                            [callback (lambda (choice event) (set! *nants* (send choice get-value)))]))
+    (define nfood-slider (new slider% 
+                            [parent option-panel]
+                            [label "# Random Food"]
+                            [min-value 0]
+                            [max-value 100]
+                            [init-value *nfood*]
+                            [callback (lambda (choice event) (set! *nfood* (send choice get-value)))]))
+    (define food-size-slider (new slider% 
+                                  [parent option-panel]
+                                  [label "Size of Food"]
+                                  [min-value 0]
+                                  [max-value 100]
+                                  [init-value *food-amt*]
+                                  [callback (lambda (choice event) (set! *food-amt* (send choice get-value)))]))
+    (define drop-slider (new slider% 
+                             [parent option-panel]
+                             [label "Drop rate"]
+                             [min-value 0]
+                             [max-value 100]
+                             [init-value *drop-amt*]
+                             [callback (lambda (choice event) (set! *drop-amt* (send choice get-value)))]))
+    (define evap-slider (new slider% 
+                             [parent option-panel]
+                             [label "Evaporation rate"]
+                             [min-value 0]
+                             [max-value 100]
+                             [init-value *decay-amt*]
+                             [callback (lambda (choice event) (set! *decay-amt* (send choice get-value)))]))
     (set! *window* app-window)
     (start-gui app-window)
-    (thread start-colony)))
+    (new-run-thread #t)))
 
 (main)

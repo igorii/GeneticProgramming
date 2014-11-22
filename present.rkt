@@ -27,7 +27,6 @@
   (define w (world 0 (pt *homept* *homept*)
                    (map (lambda (_) (ant (pt *homept* *homept*) #f))
                         (range 0 *nants*))
-                   null
                    (make-cells (grid-ncells *grid*))
                    *max-amt*))
   (place-food! *nfood* *food-amt* (grid-ncells *grid*) (world-cells w))

@@ -16,7 +16,7 @@
 (provide inc-home-food! place-food! get-cell set-cell! make-cells)
 
 ; world
-(provide decay-phermn! adj-phermn-cells adjacent-cells)
+(provide blank-world copy-world decay-phermn! adj-phermn-cells adjacent-cells)
 
 ;; utils
 (provide distance eridiv)
@@ -46,7 +46,23 @@
 (struct cell (pt phermn food) #:mutable)
 
 ;; world :: home : pt, ants : listof ant, foods : listof food, cells : ncells * ncells vector cell
-(struct world (food-at-home home ants foods cells max-phermn) #:mutable)
+(struct world (food-at-home home ants cells max-phermn) #:mutable)
+
+(define (copy-world w)
+  (world (world-food-at-home w)
+         (world-home w)
+         (map (lambda (x) (ant (ant-pt x) (ant-has-food x))) (world-ants w))
+         (list->vector (map (lambda (x) (list->vector (map (lambda (y) (struct-copy cell y)) (vector->list x))))
+              (vector->list (world-cells w))))
+         (world-max-phermn w)))
+
+(define (blank-world nants homept ncells max-phermn)
+  (world 0
+         (pt homept homept) 
+         (map (lambda (_) (ant (pt homept homept) #f))
+              (range 0 nants)) 
+         (make-cells ncells)
+         max-phermn))
 
 ;; *************************
 ;;       World/Grid
@@ -145,6 +161,6 @@
   (let ([x (- (pt-x p) (pt-x home))]
         [y (- (pt-y p) (pt-y home))])
     ;(if (< x y)
-      (pt (- (pt-x p) (normal x)) (- (pt-y p) (normal y)))))
-      ;(pt (pt-x p) (- (pt-y p) (normal y))))))
+    (pt (- (pt-x p) (normal x)) (- (pt-y p) (normal y)))))
+;(pt (pt-x p) (- (pt-y p) (normal y))))))
 
