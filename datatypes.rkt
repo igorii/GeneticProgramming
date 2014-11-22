@@ -19,7 +19,7 @@
 (provide inc-home-food! place-food! get-cell set-cell! make-cells)
 
 ; world
-(provide set-world-ants! blank-world copy-world decay-phermn! adj-phermn-cells adjacent-cells)
+(provide update-world! reset-ants! set-world-ants! blank-world copy-world decay-phermn! adj-phermn-cells adjacent-cells)
 
 ;; utils
 (provide distance eridiv)
@@ -50,6 +50,15 @@
 
 ;; world :: home : pt, ants : listof ant, foods : listof food, cells : ncells * ncells vector cell
 (struct world (food-at-home home ants cells max-phermn) #:mutable)
+
+(define (update-world! g w decay-amt update-fn!)
+  (decay-phermn! (world-cells w) (grid-ncells g) decay-amt)
+  (for ([a (world-ants w)])
+       (update-fn! a g w))
+  w)
+
+(define (reset-ants! w number)
+  (set-world-ants! w (map (lambda (x) (ant (world-home w) #f)) (range 0 number))))
 
 (define (copy-world w)
   (world (world-food-at-home w)

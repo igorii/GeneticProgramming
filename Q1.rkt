@@ -6,20 +6,20 @@
 (require "datatypes.rkt")
 
 ;; GUI vars
-(define *window*     null)
-(define *gui-thread* null)
-(define *gui-pause*    #t)
-(define *nants*        50)
-(define *nfood*        20)
-(define *food-amt*     50)
-(define *drop-amt*      5)
-(define *decay-amt*     5)
-(define *current-world* null)
-(define *init-world*    null)
-(define *grid* (grid 60 6 (* 6 60)))
+(define *window*         null)
+(define *gui-thread*     null)
+(define *gui-pause*      #t)
+(define *nants*          50)
+(define *nfood*          20)
+(define *food-amt*       50)
+(define *drop-amt*       5)
+(define *decay-amt*      5)
+(define *current-world*  null)
+(define *init-world*     null)
+(define *grid*           (grid 60 6 (* 6 60)))
 (define *next-timestamp* (current-milliseconds))
-(define *fps* (quotient 1000 40))
-(define *max-amt* 255)
+(define *fps*            (quotient 1000 40))
+(define *max-amt*        255)
 
 (define (update-ant! a g w)
   ;; HF = has food, SF = sense food, SP = sense phermn, AH = at home
@@ -49,15 +49,6 @@
       [else  ; Else move random
         (set-ant-pt! a (random-move (ant-pt a) (grid-ncells g)))])))
 
-(define (update-world g w)
-  (decay-phermn! (world-cells w) (grid-ncells g) *decay-amt*)
-  (for ([a (world-ants w)])
-       (update-ant! a g w))
-  w)
-
-(define (reset-ants! w)
-  (set-world-ants! w (map (lambda (x) (ant (world-home w) #f)) (range 0 *nants*))))
-
 ;; *****************
 ;;       GUI
 ;; *****************
@@ -67,7 +58,7 @@
     (draw-world (window-canvas *window*) grid *current-world* -1)
     (set! *next-timestamp* (+ *fps* (current-milliseconds)))
     (when (not *gui-pause*)
-      (set! *current-world* (update-world grid *current-world*))))
+      (set! *current-world* (update-world! grid *current-world* *decay-amt* update-ant!))))
   (main-loop grid w))
 
 (define (start-colony)
@@ -114,14 +105,14 @@
                          [callback (lambda (button event)
                                      (when (not (null? *init-world*))
                                        (set! *current-world* (copy-world *init-world*))
-                                       (reset-ants! *current-world*)
+                                       (reset-ants! *current-world* *nants*)
                                        (set! *gui-pause* #f)))]))
     (define randomize (new button% 
                            [parent option-panel]
                            [label "Randomize"]
                            [callback (lambda (button event) 
                                        (set! *current-world* (new-world-with-food))
-                                       (set! *init-world* (copy-world (new-world-with-food))))]))
+                                       (set! *init-world* (copy-world *current-world*)))]))
     (define clear (new button% 
                        [parent option-panel]
                        [label "Clear"]
