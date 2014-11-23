@@ -5,7 +5,10 @@
 (require "ant-drawing.rkt")
 (require "datatypes.rkt")
 
-;; GUI vars
+;; ****************
+;;     Params
+;; ****************
+
 (define *window*         null)
 (define *gui-thread*     null)
 (define *gui-pause*      #t)

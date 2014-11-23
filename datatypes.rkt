@@ -3,7 +3,6 @@
 (require racket/match)
 
 (provide (struct-out grid))
-;(provide (struct-out food))
 (provide (struct-out pt))
 (provide (struct-out ant))
 (provide (struct-out cell))
@@ -21,22 +20,16 @@
 ; world
 (provide update-world! reset-ants! set-world-ants! blank-world make-world copy-world decay-phermn! adj-phermn-cells adjacent-cells)
 
-;; utils
+; utils
 (provide distance eridiv)
 
+; params
+(provide *grid* *nfood* *food-amt* *nants* *decay-amt* *drop-amt* *max-amt* *steps* *homept*)
+(provide set-nants! set-nfood! set-food-amt! set-drop-amt! set-decay-amt!)
 
-(define (idiv   x y) (exact->inexact (/ x y)))
-(define (ridiv  x y) (round (idiv x y)))
-(define (eridiv x y) (inexact->exact (ridiv x y)))
-(define (distance p1 p2)
-  (sqrt (+ (expt (- (pt-x p1) (pt-x p2)) 2)
-           (expt (- (pt-y p1) (pt-y p2)) 2))))
 
 ;; grid :: ncells : int, cellsz : int, dim : int
 (struct grid (ncells cellsz dim))
-
-;; food :: avail : int
-;(struct food (avail) #:mutable #:transparent)
 
 ;; pt :: x : float, y : float
 (struct pt (x y) #:mutable #:transparent)
@@ -50,6 +43,10 @@
 ;; world :: home : pt, ants : listof ant, foods : listof food, cells : ncells * ncells vector cell
 (struct world (food-at-home home ants cells max-phermn) #:mutable)
 
+;; **********************
+;;       Params
+;; **********************
+
 (define *grid* (grid 70 6 (* 6 70)))
 (define *nfood* 35)
 (define *food-amt* 50)
@@ -60,8 +57,9 @@
 (define *steps* 200)
 (define *homept* (/ (grid-ncells *grid*) 2))
 
-(provide *grid* *nfood* *food-amt* *nants* *decay-amt* *drop-amt* *max-amt* *steps* *homept*)
-(provide set-nants! set-nfood! set-food-amt! set-drop-amt! set-decay-amt!)
+;; **********************
+;;    Param Mutation
+;; **********************
 
 (define (set-nants! nants)         (set! *nants* nants))
 (define (set-nfood!  nfood)         (set! *nfood* nfood))
@@ -69,6 +67,11 @@
 (define (set-drop-amt!  drop-amt)  (set! *drop-amt* drop-amt))
 (define (set-decay-amt! decay-amt) (set! *decay-amt* decay-amt))
 
+
+
+;; *************************
+;;       World/Grid
+;; *************************
 
 (define (update-world! g w decay-amt update-fn!)
   (decay-phermn! (world-cells w) (grid-ncells g) decay-amt)
@@ -100,10 +103,6 @@
     (place-food! *nfood* *food-amt* (grid-ncells *grid*) (world-cells w))
     w))
 
-;; *************************
-;;       World/Grid
-;; *************************
-
 (define (decay-phermn! matrix ncells decay-amt)
   (for ([i (range 0 ncells)])
        (for ([j (range 0 ncells)])
@@ -112,15 +111,21 @@
                 (set-cell-phermn! c (max 0 (- (cell-phermn c) decay-amt))))))))
 
 
-(define (inc-home-food! w) (set-world-food-at-home! w (add1 (world-food-at-home w))))
+(define (inc-home-food! w) 
+  (set-world-food-at-home! w (add1 (world-food-at-home w))))
+
 (define (get-cell matrix x y)
   (vector-ref (vector-ref matrix y) x))
+
 (define (set-cell! matrix x y new)
   (vector-set! (vector-ref matrix y) x new))
+
 (define (update-cell-phermn matrix x y new)
   (set-cell-phermn! (get-cell matrix x y) new))
+
 (define (update-cell-food! matrix x y new)
   (set-cell-food! (get-cell matrix x y) new))
+
 (define (make-cells n)
   (let ([v1 (make-vector n null)])
     (for ([i (range 0 n)])
@@ -196,7 +201,13 @@
     (if (= 0 x) x (/ x (abs x))))
   (let ([x (- (pt-x p) (pt-x home))]
         [y (- (pt-y p) (pt-y home))])
-    ;(if (< x y)
     (pt (- (pt-x p) (normal x)) (- (pt-y p) (normal y)))))
-;(pt (pt-x p) (- (pt-y p) (normal y))))))
 
+;; Utils
+
+(define (idiv   x y) (exact->inexact (/ x y)))
+(define (ridiv  x y) (round (idiv x y)))
+(define (eridiv x y) (inexact->exact (ridiv x y)))
+(define (distance p1 p2)
+  (sqrt (+ (expt (- (pt-x p1) (pt-x p2)) 2)
+           (expt (- (pt-y p1) (pt-y p2)) 2))))
