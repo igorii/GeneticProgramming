@@ -3,7 +3,7 @@
 (require racket/match)
 
 (provide (struct-out grid))
-(provide (struct-out food))
+;(provide (struct-out food))
 (provide (struct-out pt))
 (provide (struct-out ant))
 (provide (struct-out cell))
@@ -24,6 +24,7 @@
 ;; utils
 (provide distance eridiv)
 
+
 (define (idiv   x y) (exact->inexact (/ x y)))
 (define (ridiv  x y) (round (idiv x y)))
 (define (eridiv x y) (inexact->exact (ridiv x y)))
@@ -31,13 +32,11 @@
   (sqrt (+ (expt (- (pt-x p1) (pt-x p2)) 2)
            (expt (- (pt-y p1) (pt-y p2)) 2))))
 
-;; structs
-
 ;; grid :: ncells : int, cellsz : int, dim : int
 (struct grid (ncells cellsz dim))
 
 ;; food :: avail : int
-(struct food (avail) #:mutable #:transparent)
+;(struct food (avail) #:mutable #:transparent)
 
 ;; pt :: x : float, y : float
 (struct pt (x y) #:mutable #:transparent)
@@ -50,6 +49,26 @@
 
 ;; world :: home : pt, ants : listof ant, foods : listof food, cells : ncells * ncells vector cell
 (struct world (food-at-home home ants cells max-phermn) #:mutable)
+
+(define *grid* (grid 70 6 (* 6 70)))
+(define *nfood* 35)
+(define *food-amt* 50)
+(define *nants* 40)
+(define *decay-amt* 5)
+(define *drop-amt* 5)
+(define *max-amt* 255)
+(define *steps* 200)
+(define *homept* (/ (grid-ncells *grid*) 2))
+
+(provide *grid* *nfood* *food-amt* *nants* *decay-amt* *drop-amt* *max-amt* *steps* *homept*)
+(provide set-nants! set-nfood! set-food-amt! set-drop-amt! set-decay-amt!)
+
+(define (set-nants! nants)         (set! *nants* nants))
+(define (set-nfood!  nfood)         (set! *nfood* nfood))
+(define (set-food-amt!  food-amt)  (set! *food-amt* food-amt))
+(define (set-drop-amt!  drop-amt)  (set! *drop-amt* drop-amt))
+(define (set-decay-amt! decay-amt) (set! *decay-amt* decay-amt))
+
 
 (define (update-world! g w decay-amt update-fn!)
   (decay-phermn! (world-cells w) (grid-ncells g) decay-amt)

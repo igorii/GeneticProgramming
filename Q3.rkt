@@ -4,40 +4,34 @@
 (require racket/pretty)
 (require racket/gui/base)
 (require racket/match)
+
 (require (prefix-in gp: "generic-gp.rkt"))
 (require "generic-window.rkt")
 (require "ant-drawing.rkt")
 (require "datatypes.rkt")
+(require "ant-functions.rkt")
 
-(define *grid* (grid 70 6 (* 6 50)))
-(define *nfood* 35)
-(define *food-amt* 50)
-(define *nants* 40)
 (define *window* null)
 (define *next-timestamp* (current-milliseconds))
 (define *fps* (quotient 1000 40))
-(define *decay-amt* 6)
-(define *drop-amt* 9)
-(define *max-amt* 255)
-(define *steps* 200)
-(define *homept* (/ (grid-ncells *grid*) 2))
 
 (define (make-world)
   (define w (blank-world *nants* *homept* (grid-ncells *grid*) *max-amt*))
   (place-food! *nfood* *food-amt* (grid-ncells *grid*) (world-cells w))
   w)
 
-(define *pop-size* 100)
-(define *max-generations* 51)
-(define *%crossover* 0.9)
-(define *%mutation* 0.05)
 (define *%reproduction* 0.09)
 (define *%crossover-point* 0.9)
 (define *max-init-program-size* 6)
 (define *max-run-program-size* 17)
+(define *pop-size* 100)
+(define *max-generations* 51)
+(define *%crossover* 0.9)
+(define *%mutation* 0.05)
 (define *tourny-size* 7)
 (define *elitism* #t)
-(define *init-world* (blank-world))
+(define *init-world* (blank-world *nants* *homept* (grid-ncells *grid*) *max-amt*))
+
 (define *terminals* (list 'move-random
                           'move-to-nest
                           'pick-up
@@ -65,77 +59,6 @@
   (let ((ns (make-base-namespace)))
     (lambda (form)
       (eval `(lambda (a w) ,form) ns))))
-
-(define (r-move-random a w)
-  (set-ant-steps! a (add1 (ant-steps a)))
-  (set-ant-pt! a (random-move (ant-pt a) (grid-ncells *grid*))))
-
-(define (r-move-to-nest a w)
-  (set-ant-steps! a (add1 (ant-steps a)))
-  (set-ant-pt! a (gohome (ant-pt a) (world-home w))))
-
-(define (r-pick-up a w)
-  (let ([currcell (get-cell (world-cells w) (pt-x (ant-pt a)) (pt-y (ant-pt a)))])
-    (when (and (not (ant-has-food a)) (not (null? (cell-food currcell))))
-      (if (>= 1 (cell-food currcell))
-        (set-cell-food! currcell null)
-        (set-cell-food! currcell (- (cell-food currcell) 1)))
-      (set-ant-has-food! a #t))))
-
-(define (r-drop-phermn a w) 
-  (drop-phermn! a *grid* w *drop-amt*))
-
-(define (r-move-to-adjacent-food-else a w sym1)
-  (let* ([currcell (get-cell (world-cells w) (pt-x (ant-pt a)) (pt-y (ant-pt a)))]
-         [adjcells (adjacent-cells (ant-pt a) (world-cells w) (grid-ncells *grid*))]
-         [cellswithfood (filter (lambda (x) (not (null? (cell-food x)))) adjcells)])
-    (if (not (null? cellswithfood))
-      (let ([foodcell (car cellswithfood)])
-        (set-ant-steps! a (add1 (ant-steps a)))
-        (set-ant-pt! a (cell-pt foodcell)))
-      (run-symtree! a w sym1))))
-
-(define (r-move-to-adjacent-phermn-else a w sym1)
-  (let* ([currcell (get-cell (world-cells w) (pt-x (ant-pt a)) (pt-y (ant-pt a)))]
-         [adj-phermn-cells (adj-phermn-cells (ant-pt a) (world-cells w) (grid-ncells *grid*))])
-    (if (null? adj-phermn-cells)
-      (run-symtree! a w sym1)
-      (let ([farther-pts
-              (filter (lambda (x) (> (distance (cell-pt x) (world-home w))
-                                     (distance (ant-pt a)  (world-home w))))
-                      adj-phermn-cells)])
-        (set-ant-steps! a (add1 (ant-steps a)))
-        (if (null? farther-pts)
-          (set-ant-pt! a (random-move (ant-pt a) (grid-ncells *grid*)))
-          (set-ant-pt! a (cell-pt (argmax (lambda (x) (cell-phermn x)) farther-pts))))))))
-
-(define (r-if-food-here a w sym1 sym2)
-  (let ([currcell (get-cell (world-cells w) (pt-x (ant-pt a)) (pt-y (ant-pt a)))])
-    (if (not (null? (cell-food currcell)))
-      (run-symtree! a w sym1)
-      (run-symtree! a w sym2))))
-
-(define (r-if-carrying-food a w sym1 sym2) 
-  (if (ant-has-food a)
-    (run-symtree! a w sym1)
-    (run-symtree! a w sym2)))
-
-(define (r-progn a w sym1 sym2)
-  (begin 
-    (run-symtree! a w sym1)
-    (run-symtree! a w sym2)))
-
-(define (run-symtree! a w symtree)
-  (match symtree
-         [(gp:leaf 'move-random)                         (r-move-random a w)]
-         [(gp:leaf 'move-to-nest)                        (r-move-to-nest a w)]
-         [(gp:leaf 'pick-up)                             (r-pick-up a w)]
-         [(gp:leaf 'drop-phermn)                         (r-drop-phermn a w)]
-         [(gp:branch1 'move-to-adjacent-food-else a1)    (r-move-to-adjacent-food-else a w a1)]
-         [(gp:branch1 'move-to-adjacent-phermn-else a1)  (r-move-to-adjacent-phermn-else a w a1)]
-         [(gp:branch2 'if-food-here a1 a2)               (r-if-food-here a w a1 a2)]
-         [(gp:branch2 'if-carrying-food a1 a2)           (r-if-carrying-food a w a1 a2)]
-         [(gp:branch2 'progn a1 a2)                      (r-progn a w a1 a2)]))
 
 (define (run-simulation pausefn callback iterations program w)
   (define (cb w i)
@@ -167,7 +90,8 @@
 
 (define (make-fitness-fn iterations x)
   (lambda (program)
-    (run-simulation (lambda () #f) (lambda (x i) x) iterations program (make-world))))
+    (run-simulation (lambda () #f) (lambda (x i) x) 
+                    iterations program (make-world))))
 
 (define (timestamp)
   (let ([d (current-date)])

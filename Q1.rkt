@@ -9,17 +9,14 @@
 (define *window*         null)
 (define *gui-thread*     null)
 (define *gui-pause*      #t)
-(define *nants*          50)
-(define *nfood*          20)
-(define *food-amt*       50)
-(define *drop-amt*       5)
-(define *decay-amt*      5)
 (define *current-world*  null)
 (define *init-world*     null)
-(define *grid*           (grid 60 6 (* 6 60)))
 (define *next-timestamp* (current-milliseconds))
 (define *fps*            (quotient 1000 40))
-(define *max-amt*        255)
+
+;; ****************
+;;   World Update
+;; ****************
 
 (define (update-ant! a g w)
   ;; HF = has food, SF = sense food, SP = sense phermn, AH = at home
@@ -129,7 +126,7 @@
                             [max-value 100]
                             [init-value *nants*]
                             [callback (lambda (choice event) 
-                                        (set! *nants* (send choice get-value)))]))
+                                        (set-nants! (send choice get-value)))]))
     (define nfood-slider (new slider% 
                               [parent option-panel]
                               [label "# Random Food"]
@@ -137,7 +134,7 @@
                               [max-value 100]
                               [init-value *nfood*]
                               [callback (lambda (choice event) 
-                                          (set! *nfood* (send choice get-value)))]))
+                                          (set-nfood! (send choice get-value)))]))
     (define food-size-slider (new slider% 
                                   [parent option-panel]
                                   [label "Size of Food"]
@@ -145,7 +142,7 @@
                                   [max-value 100]
                                   [init-value *food-amt*]
                                   [callback (lambda (choice event) 
-                                              (set! *food-amt* (send choice get-value)))]))
+                                              (set-food-amt! (send choice get-value)))]))
     (define drop-slider (new slider% 
                              [parent option-panel]
                              [label "Drop rate"]
@@ -153,7 +150,7 @@
                              [max-value 100]
                              [init-value *drop-amt*]
                              [callback (lambda (choice event) 
-                                         (set! *drop-amt* (send choice get-value)))]))
+                                         (set-drop-amt! (send choice get-value)))]))
     (define evap-slider (new slider% 
                              [parent option-panel]
                              [label "Evaporation rate"]
@@ -161,7 +158,7 @@
                              [max-value 100]
                              [init-value *decay-amt*]
                              [callback (lambda (choice event) 
-                                         (set! *decay-amt* (send choice get-value)))]))
+                                         (set-decay-amt! (send choice get-value)))]))
     (set! *window* app-window)
     (start-gui app-window)
     (new-run-thread #t)))

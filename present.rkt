@@ -9,19 +9,9 @@
 (require "ant-drawing.rkt")
 (require "datatypes.rkt")
 
-(define *grid* (grid 70 6 (* 6 70)))
-(define *nfood* 35)
-(define *food-amt* 50)
-(define *nants* 40)
 (define *window* null)
 (define *next-timestamp* (current-milliseconds))
 (define *fps* (quotient 1000 40))
-(define *decay-amt* 6)
-(define *drop-amt* 12)
-(define *max-amt* 255)
-(define *iterations* 200)
-
-(define *homept* (/ (grid-ncells *grid*) 2))
 
 (define (make-world)
   (define w (world 0 (pt *homept* *homept*)
@@ -129,14 +119,12 @@
                  #f)
           #t))
       (lambda (w i) (draw-world (window-canvas *window*) *grid* w i))
-      iterations
-      program
-      (make-world)))
+      iterations program (make-world)))
   (let ([app-window (create-window "Ant Colony" 700 (grid-dim *grid*) (grid-dim *grid*) (grid-dim *grid*) (lambda (e) null))])
     (set! *window* app-window)
     (start-gui app-window)
     (thread go)))
 
 (define file (command-line #:args file (car file)))
-(define (main) (present-program (gp:file->program file) *iterations*))
+(define (main) (present-program (gp:file->program file) *steps*))
 (main)
