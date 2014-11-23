@@ -19,7 +19,7 @@
 (provide inc-home-food! place-food! get-cell set-cell! make-cells)
 
 ; world
-(provide update-world! reset-ants! set-world-ants! blank-world copy-world decay-phermn! adj-phermn-cells adjacent-cells)
+(provide update-world! reset-ants! set-world-ants! blank-world make-world copy-world decay-phermn! adj-phermn-cells adjacent-cells)
 
 ;; utils
 (provide distance eridiv)
@@ -94,6 +94,11 @@
               (range 0 nants)) 
          (make-cells ncells)
          max-phermn))
+
+(define (make-world)
+  (let ([w (blank-world *nants* *homept* (grid-ncells *grid*) *max-amt*)])
+    (place-food! *nfood* *food-amt* (grid-ncells *grid*) (world-cells w))
+    w))
 
 ;; *************************
 ;;       World/Grid

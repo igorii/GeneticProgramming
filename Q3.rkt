@@ -1,48 +1,49 @@
 #lang racket
 
+;; ******************
+;;     Requires
+;; ******************
+
 (require racket/date)
 (require racket/pretty)
-(require racket/gui/base)
-(require racket/match)
-
 (require (prefix-in gp: "generic-gp.rkt"))
-(require "generic-window.rkt")
 (require "ant-drawing.rkt")
 (require "datatypes.rkt")
 (require "ant-functions.rkt")
 
-(define *window* null)
-(define *next-timestamp* (current-milliseconds))
-(define *fps* (quotient 1000 40))
+;; ******************
+;; Global Parameters
+;; ******************
 
-(define (make-world)
-  (define w (blank-world *nants* *homept* (grid-ncells *grid*) *max-amt*))
-  (place-food! *nfood* *food-amt* (grid-ncells *grid*) (world-cells w))
-  w)
-
-(define *%reproduction* 0.09)
-(define *%crossover-point* 0.9)
+;; GP params
 (define *max-init-program-size* 6)
 (define *max-run-program-size* 17)
 (define *pop-size* 100)
 (define *max-generations* 51)
-(define *%crossover* 0.9)
 (define *%mutation* 0.05)
 (define *tourny-size* 7)
-(define *elitism* #t)
 (define *init-world* (blank-world *nants* *homept* (grid-ncells *grid*) *max-amt*))
 
+;; The terminal set for the GP
 (define *terminals* (list 'move-random
                           'move-to-nest
                           'pick-up
                           'drop-phermn))
 
+;; The function table for the GP. We will be interpreting the
+;; programs ourselves, so we do not add the procedure arguments
 (define *func-table* (list (gp:fn 'if-food-here 2 null)
                            (gp:fn 'if-carrying-food 2 null)
                            (gp:fn 'move-to-adjacent-food-else 1 null)
                            (gp:fn 'move-to-adjacent-phermn-else 1 null)
                            (gp:fn 'progn 2 null)))
 
+;; ******************
+;;     GP Defines
+;; ******************
+
+;; For each best strategy in each generation, display the fitness and the strategy
+;; to stdout. Every 10 iterations, write the strategy to a file.
 (define (make-callback)
   (lambda (fit individual iter)
     (displayln "")
@@ -55,44 +56,27 @@
         (string-append "out/GP-" (number->string fit) "-" (timestamp) ".s")))
     (displayln "--------------------------------------------------------------------------------")))
 
+;; Given a strategy as a symbol, parameterized by an ant and a world,
+;; evaluate the strategy, mutating both the given ant and world.
 (define eval-form
   (let ((ns (make-base-namespace)))
     (lambda (form)
       (eval `(lambda (a w) ,form) ns))))
 
-(define (run-simulation pausefn callback iterations program w)
-  (define (cb w i)
-    (display (string-append (number->string (world-food-at-home w)) " "))
-    (flush-output)
-    (callback w i)
-    (world-food-at-home w))
-
-  (define (loop iter w)
-    (if (pausefn)
-      (loop iter w)
-      (if (<= iter 0)
-        (cb w iter)
-        (begin
-          (callback w iter)
-          (decay-phermn! (world-cells w) (grid-ncells *grid*) *decay-amt*)
-          (let ([finished #f])
-            (for ([a (world-ants w)])
-                 #:break finished
-                 (run-symtree! a w program)
-                 (when (and (ant-has-food a) (equal? (ant-pt a) (world-home w)))
-                   (inc-home-food! w)
-                   (set-ant-has-food! a #f))
-                 (when (>= (ant-steps a) iterations) (set! finished #t)))
-            (if finished 
-              (cb w iter)
-              (loop (sub1 iter) w)))))))
-  (loop iterations w))
-
+;; Returns a function that when given a strategy, will calculate
+;; the amount of food that the strategy is able to bring to a nest
+;; in a certain number of steps
 (define (make-fitness-fn iterations x)
   (lambda (program)
-    (run-simulation (lambda () #f) (lambda (x i) x) 
+    (run-simulation (lambda ()   #f) ; Never pause in GP
+                    (lambda (x i) x) ; noop
+                    (lambda (w i)
+                      (display (string-append (number->string (world-food-at-home w)) " "))
+                      (flush-output)
+                      (world-food-at-home w))
                     iterations program (make-world))))
 
+;; Creates a timestamp string from the current time
 (define (timestamp)
   (let ([d (current-date)])
     (string-append
@@ -103,46 +87,29 @@
       (number->string (date-minute d)) "-"
       (number->string (date-second d)))))
 
-(define (present-program program iterations)
-  (define (go)
-    (run-simulation
-      (lambda ()
-        (if (> (current-milliseconds) *next-timestamp*)
-          (begin 
-            (set! *next-timestamp* 
-              (+ *fps* (current-milliseconds)))
-            #f)
-          #t))
-      (lambda (w i)
-        (draw-world (window-canvas *window*) *grid* w i))
-      iterations
-      program
-      (make-world)))
-
-  (let ([app-window (create-window "Ant Colony" 700 
-                                   (grid-dim *grid*) 
-                                   (grid-dim *grid*) 
-                                   (grid-dim *grid*)
-                                   (lambda (e) null))])
-    (write-to-file (gp:program->string program) (string-append "GP-" (timestamp) ".s"))
-    (set! *window* app-window)
-    (start-gui app-window)
-    (thread go)))
-
-(define (start-regression)
+;; Starts a GP using the function table and terminal set defined
+;; above to find an ant strategy for collecting as much food in
+;; a limited number of steps as possible.
+(define (start-gp)
   (let ([best (gp:generic-gp
-                #:population-size *pop-size*
-                #:minimizing #f
+                #:population-size      *pop-size*
+                #:minimizing           #f
                 #:max-init-tree-height *max-init-program-size*
-                #:max-run-tree-height *max-run-program-size*
-                #:function-table *func-table*
-                #:terminals *terminals*
-                #:mutation-rate *%mutation*
-                #:tournament-size *tourny-size*
-                #:fitness-fn (make-fitness-fn *steps* null)
-                #:generations *max-generations*
+                #:max-run-tree-height  *max-run-program-size*
+                #:function-table       *func-table*
+                #:terminals            *terminals*
+                #:mutation-rate        *%mutation*
+                #:tournament-size      *tourny-size*
+                #:fitness-fn           (make-fitness-fn *steps* null)
+                #:generations          *max-generations*
                 #:callback (make-callback))])
-    (present-program (cadr best) *steps*)))
+    (write-to-file (gp:program->string (cadr best)) (string-append "GP-" (number->string (car best)) "-" (timestamp) ".s"))
+    (present-program (cadr best) *steps* draw-world)))
 
-(define (main) (start-regression))
+;; ******************
+;;       Main
+;; ******************
+
+(define (main) (start-gp))
+
 (main)
