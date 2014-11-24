@@ -25,7 +25,7 @@
 
 ; params
 (provide *grid* *nfood* *food-amt* *nants* *decay-amt* *drop-amt* *max-amt* *steps* *homept*)
-(provide set-nants! set-nfood! set-food-amt! set-drop-amt! set-decay-amt!)
+(provide set-max-amt! set-nants! set-nfood! set-food-amt! set-drop-amt! set-decay-amt!)
 
 
 ;; grid :: ncells : int, cellsz : int, dim : int
@@ -62,12 +62,11 @@
 ;; **********************
 
 (define (set-nants! nants)         (set! *nants* nants))
-(define (set-nfood!  nfood)         (set! *nfood* nfood))
+(define (set-max-amt! max-amt)     (set! *max-amt* max-amt))
+(define (set-nfood!  nfood)        (set! *nfood* nfood))
 (define (set-food-amt!  food-amt)  (set! *food-amt* food-amt))
 (define (set-drop-amt!  drop-amt)  (set! *drop-amt* drop-amt))
 (define (set-decay-amt! decay-amt) (set! *decay-amt* decay-amt))
-
-
 
 ;; *************************
 ;;       World/Grid

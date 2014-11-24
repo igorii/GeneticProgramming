@@ -40,9 +40,9 @@
          (set-ant-has-food! a #t)]
         [(and (not (ant-has-food a)) (not (null? adj-phermn-cells)))      ; Else if ~HF and SP, move to next position along trail (away from home)
          (let ([farther-pts 
-                 (filter (lambda (x) (> (distance (cell-pt x) (world-home w))
-                                        (distance (ant-pt a) (world-home w)))) 
-                         adj-phermn-cells)])
+                  (filter (lambda (x) (> (distance (cell-pt x) (world-home w))
+                                         (distance (ant-pt a)  (world-home w)))) 
+                          adj-phermn-cells)])
            (if (null? farther-pts)
              (set-ant-pt! a (random-move (ant-pt a) (grid-ncells g)))
              (set-ant-pt! a (cell-pt (argmax (lambda (x) (cell-phermn x)) farther-pts)))))]
@@ -60,7 +60,7 @@
     (set! *next-timestamp* (+ *fps* (current-milliseconds)))
     (when (not *gui-pause*)
       (set! *current-world* (update-world! grid *current-world* *decay-amt* (update-ant! with-phermn)))))
-  (main-loop grid w))
+  (main-loop with-phermn grid w))
 
 (define (main-loop-with-iters with-phermn iters grid w)
   (if (<= iters 0)
@@ -100,7 +100,7 @@
 (define (new-run-thread paused)
   (if (thread? *gui-thread*) (kill-thread *gui-thread*) null)
   (set! *gui-pause* paused)
-  (set! *gui-thread* (thread start-colony-comparison)))
+  (set! *gui-thread* (thread start-colony)))
 
 (define (main)
   (let* ([app-window (create-window 
@@ -120,7 +120,7 @@
          [option-panel (new vertical-panel% [parent (window-panel app-window)])])
     (define pause-btn (new button%
                            [parent option-panel]
-                           [label "Play/Pause"]
+                           [label "Start/Stop"]
                            [callback (lambda (button event) 
                                        (set! *gui-pause* (not *gui-pause*)))]))
     (define restart (new button% 
@@ -166,7 +166,7 @@
                                   [parent option-panel]
                                   [label "Size of Food"]
                                   [min-value 0]
-                                  [max-value 100]
+                                  [max-value 200]
                                   [init-value *food-amt*]
                                   [callback (lambda (choice event) 
                                               (set-food-amt! (send choice get-value)))]))
