@@ -2,6 +2,10 @@
 
 (require racket/match)
 
+;; **********************
+;;       Provides
+;; **********************
+
 (provide (struct-out grid))
 (provide (struct-out pt))
 (provide (struct-out ant))
@@ -27,6 +31,9 @@
 (provide *grid* *nfood* *food-amt* *nants* *decay-amt* *drop-amt* *max-amt* *steps* *homept*)
 (provide set-max-amt! set-nants! set-nfood! set-food-amt! set-drop-amt! set-decay-amt!)
 
+;; **********************
+;;       Structs
+;; **********************
 
 ;; grid :: ncells : int, cellsz : int, dim : int
 (struct grid (ncells cellsz dim))
@@ -72,15 +79,18 @@
 ;;       World/Grid
 ;; *************************
 
+;; Update a world with the given ant update function and phermn decay rate
 (define (update-world! g w decay-amt update-fn!)
   (decay-phermn! (world-cells w) (grid-ncells g) decay-amt)
   (for ([a (world-ants w)])
        (update-fn! a g w))
   w)
 
+;; Reset the ants in a world
 (define (reset-ants! w number)
   (set-world-ants! w (map (lambda (x) (ant (world-home w) #f)) (range 0 number))))
 
+;; Copy a world to avoid mutation
 (define (copy-world w)
   (world (world-food-at-home w)
          (world-home w)
@@ -89,19 +99,21 @@
               (vector->list (world-cells w))))
          (world-max-phermn w)))
 
+;; Create a new world with no food
 (define (blank-world nants homept ncells max-phermn)
-  (world 0
-         (pt homept homept) 
+  (world 0 (pt homept homept)
          (map (lambda (_) (ant (pt homept homept) #f))
-              (range 0 nants)) 
+              (range 0 nants))
          (make-cells ncells)
          max-phermn))
 
+;; Make a new world with food
 (define (make-world)
   (let ([w (blank-world *nants* *homept* (grid-ncells *grid*) *max-amt*)])
     (place-food! *nfood* *food-amt* (grid-ncells *grid*) (world-cells w))
     w))
 
+;; Decay the phermn by the given amount in a world
 (define (decay-phermn! matrix ncells decay-amt)
   (for ([i (range 0 ncells)])
        (for ([j (range 0 ncells)])
@@ -109,22 +121,28 @@
               (when (not (= 0 (cell-phermn c)))
                 (set-cell-phermn! c (max 0 (- (cell-phermn c) decay-amt))))))))
 
-
+;; Increment the amount of food stored at a nest in a world
 (define (inc-home-food! w) 
   (set-world-food-at-home! w (add1 (world-food-at-home w))))
 
+;; Retrieve the world cell specified by the given coordinate
 (define (get-cell matrix x y)
   (vector-ref (vector-ref matrix y) x))
 
+;; Set a world cell at a given coordinate
 (define (set-cell! matrix x y new)
   (vector-set! (vector-ref matrix y) x new))
 
+;; Update a world cell's phermn at a given coordinate
 (define (update-cell-phermn matrix x y new)
   (set-cell-phermn! (get-cell matrix x y) new))
 
+;; Update a world cell's food at a given coordinate
 (define (update-cell-food! matrix x y new)
   (set-cell-food! (get-cell matrix x y) new))
 
+;; Make a world grid of a cells as a 2D vector of a given
+;; (square) dimension
 (define (make-cells n)
   (let ([v1 (make-vector n null)])
     (for ([i (range 0 n)])
@@ -134,6 +152,7 @@
               (set-cell! v1 i j (cell (pt i j) 0 null)))) 
     v1))
 
+;; Place the specified number of food randomly throughout a world grid
 (define (place-food! num amt ncells matrix)
   (map (lambda (x) 
          (let ([x (inexact->exact (floor (* ncells (random))))]
@@ -141,6 +160,7 @@
            (update-cell-food! matrix x y amt)))
        (range 0 num)))
 
+;; Retrieve the adjacent (including diagonals) cells to a given coordinate
 (define (adjacent-cells p cells ncells)
   (let ([l '()])
     (for ([x (range (sub1 (pt-x p)) (add1 (add1 (pt-x p))))])
@@ -151,6 +171,8 @@
                             l))))
     l))
 
+;; Retrieve the adjacent (including diagonals) cells that have some phermn
+;; to a given coordinate
 (define (adj-phermn-cells p cells ncells)
   (let ([adjcells (adjacent-cells p cells ncells)])
     (filter (lambda (x) (not (= 0 (cell-phermn x)))) adjcells)))
@@ -159,11 +181,13 @@
 ;;           Ant
 ;; *************************
 
+;; Direction helpers
 (define adjacent-dirs (vector 'up 'down 'left 'right 'upleft 'upright 'downleft 'downright))
 (define (random-direction) 
   (vector-ref adjacent-dirs 
               (inexact->exact (floor (* (vector-length adjacent-dirs) (random))))))
 
+;; Movement functions
 (define (move-left!  pt ncells) (set-pt-x! pt (modulo (- (pt-x pt) 1) ncells)))
 (define (move-right! pt ncells) (set-pt-x! pt (modulo (+ (pt-x pt) 1) ncells)))
 (define (move-up!    pt ncells) (set-pt-y! pt (modulo (+ (pt-y pt) 1) ncells)))
@@ -181,9 +205,11 @@
            ['downright (begin (move-down! pt ncells) (move-right! pt ncells))])
     pt))
 
+;; Return a position that would be the result of a move in a random direction
 (define (random-move pt ncells)
   (move pt (random-direction) ncells))
 
+;; Update a world dby dropping phermn at the current location of an ant
 (define (drop-phermn! a g w drop-amt)
   (let* ([currcell (get-cell (world-cells w) (pt-x (ant-pt a)) (pt-y (ant-pt a)))]
          [cs (adjacent-cells (ant-pt a) (world-cells w) (grid-ncells g))]
@@ -195,6 +221,7 @@
            (for ([c cs])
                 (set-cell-phermn! c (min max-amt (+ (eridiv drop-amt 4) (cell-phermn c)))))))))
 
+;; Move in the direction of the nest
 (define (gohome p home)
   (define (normal x) 
     (if (= 0 x) x (/ x (abs x))))
@@ -203,7 +230,6 @@
     (pt (- (pt-x p) (normal x)) (- (pt-y p) (normal y)))))
 
 ;; Utils
-
 (define (idiv   x y) (exact->inexact (/ x y)))
 (define (ridiv  x y) (round (idiv x y)))
 (define (eridiv x y) (inexact->exact (ridiv x y)))

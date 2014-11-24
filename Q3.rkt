@@ -25,6 +25,7 @@
 (define *init-world* (blank-world *nants* *homept* (grid-ncells *grid*) *max-amt*))
 
 ;; The terminal set for the GP
+;; Movement commands cause a time step (move-to-nest, move-random)
 (define *terminals* (list 'move-random
                           'move-to-nest
                           'pick-up
@@ -103,7 +104,9 @@
                 #:fitness-fn           (make-fitness-fn *steps* null)
                 #:generations          *max-generations*
                 #:callback (make-callback))])
+    ;; Write the best result to a file
     (write-to-file (gp:program->string (cadr best)) (string-append "GP-" (number->string (car best)) "-" (timestamp) ".s"))
+    ;; And then open a GUI to present it
     (present-program (cadr best) *steps* draw-world)))
 
 ;; ******************

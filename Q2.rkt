@@ -7,6 +7,22 @@
 (require "generic-window.rkt")
 (require "regression-drawing.rkt")
 
+;; Target Functions
+;(define *target* (lambda (x) (+ 1 (+ x (+ (expt (* 2 x) 2) (expt (* 3 x) 3))))))
+(define *target* (lambda (x) (+ (cos x) (* 3 (sin (expt x 2))))))
+
+;; Params
+(define *window*                null)
+(define *pop-size*              1000)
+(define *success*                 20)
+(define *precision*            0.001)
+(define *max-generations*         51)
+(define *%mutation*             0.05)
+(define *max-init-program-size*    6)
+(define *max-run-program-size*    17)
+(define *tourny-size*              7)
+(define *nfitcases*               50)
+
 ;; Restricted functions
 (define (r-add a b) (+ a b))
 (define (r-sub a b) (- a b))
@@ -19,20 +35,6 @@
     (let ([t (expt a b)])
       (if (not (complex? t)) t 1))))
 
-;; Target Functions
-;(define *target* (lambda (x) (+ 1 (+ x (+ (expt (* 2 x) 2) (expt (* 3 x) 3))))))
-(define *target* (lambda (x) (+ (cos x) (* 3 (sin (expt x 2))))))
-
-(define *pop-size* 1000)
-(define *success* 20)
-(define *precision* 0.001)
-(define *max-generations* 51)
-(define *%mutation* 0.05)
-(define *max-init-program-size* 6)
-(define *max-run-program-size* 17)
-(define *tourny-size* 7)
-(define *nfitcases* 100)
-
 (define *terminals*  (list 'x 'R))
 (define *func-table* (list (gp:fn 'add 2 r-add)
                            (gp:fn 'sub 2 r-sub)
@@ -43,18 +45,23 @@
                            (gp:fn 'exp 2 r-exp)))
 
 (struct fitcase (input output) #:transparent)
+
+;; Create a list of fitness cases mapping input to expected output
 (define (create-fitness-cases fn minp maxp n)
   (map (lambda (x) (fitcase x (fn x)))
        (map (lambda (x) (+ minp (* (- maxp minp) (/ x n))))
             (range 0 n))))
 
+;; Calculate fitness difference between a generated program and
+;; the expected output
 (define (calc-fit-diffs fitcases symtree ftable)
   (map (lambda (x)
          (let ([rslt (gp:eval-symtree symtree (fitcase-input x) ftable)])
-           (fitcase (fitcase-input x) 
-                    (sqr (- (fitcase-output x) rslt)))))
+           (fitcase (fitcase-input x) (sqr (- (fitcase-output x) rslt)))))
        fitcases))
 
+;; From a list of differences between given and expected values, determine
+;; the fitness of the individual using root mean square error
 (define (calc-fitness-from-diffs fitdiffs nfitcases successes precision)
   ;; If we've passed the correct number of cases, just return 0, otherwise
   ;; get the normalized difference
@@ -64,16 +71,21 @@
       (let ([sum (foldl + 0 (map (lambda (x) (fitcase-output x)) fitdiffs))])
         (sqrt (/ sum nfitcases))))))
 
+;; Return a function that when given a program, will return the fitness of
+;; that program
 (define (make-fitness-fn fn ftable xmin xmax nfitcases successes precision)
   (let* ([fitcases (create-fitness-cases fn xmin xmax nfitcases)])
     (lambda (program)
-      (calc-fitness-from-diffs (calc-fit-diffs fitcases program ftable) nfitcases successes precision))))
+      (calc-fitness-from-diffs (calc-fit-diffs fitcases program ftable)
+                               nfitcases successes precision))))
 
+;; Evaluate a form in a new namespace
 (define eval-form
   (let ((ns (make-base-namespace)))
     (lambda (form) 
       (eval `(lambda (x) ,form) ns))))
 
+;; Create a callback on which the best individual of each generation will be called
 (define (make-callback target xmin xmax height width ftable)
   (lambda (fit individual iter)
     (displayln "--------------------------------------------------------------------------------")
@@ -81,22 +93,22 @@
     (pretty-print (gp:symtree->source individual))
     (update-canvas (window-canvas *window*)
                    (eval-form (gp:symtree->proc individual ftable))
-                   target
-                   xmin xmax height width fit)))
+                   target xmin xmax height width fit)))
 
+;; Inverse eta reduce so that the gp can be called in a new thread
 (define (start-regression)
   (gp:generic-gp
-    #:population-size *pop-size*
+    #:population-size      *pop-size*
     #:max-init-tree-height *max-init-program-size*
-    #:max-run-tree-height *max-run-program-size*
-    #:function-table *func-table*
-    #:terminals *terminals*
-    #:mutation-rate *%mutation*
-    #:tournament-size *tourny-size*
-    #:fitness-fn (make-fitness-fn *target* *func-table* -5 5 *nfitcases* *success* *precision*)
-    #:callback (make-callback *target* -5 5 600 600 *func-table*)))
+    #:max-run-tree-height  *max-run-program-size*
+    #:function-table       *func-table*
+    #:terminals            *terminals*
+    #:mutation-rate        *%mutation*
+    #:tournament-size      *tourny-size*
+    #:fitness-fn           (make-fitness-fn *target* *func-table* -5 5 *nfitcases* *success* *precision*)
+    #:callback             (make-callback *target* -5 5 600 600 *func-table*)))
 
-(define *window* null)
+;; MAIN
 (define (main)
   (let ([app-window (create-window "Symbolic Regression" 600 600 600 600 (lambda (e) null))])
     (set! *window* app-window)

@@ -10,10 +10,6 @@
 (require "datatypes.rkt")
 (require "ant-functions.rkt")
 
-(define file 
-  (command-line #:args file (car file)))
-
-(define (main) 
-  (present-program (gp:file->program file) *steps* draw-world))
-
+(define file   (command-line #:args file (car file)))
+(define (main) (present-program (gp:file->program file) *steps* draw-world))
 (main)
