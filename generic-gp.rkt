@@ -328,6 +328,5 @@
 
   ;; Create an initial population and begin the GP loop
   (let* ([initial-population (ramped-half-and-half popsize)])
-    (displayln (length initial-population))
     (loop 1 null initial-population)))
 
