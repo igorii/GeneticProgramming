@@ -21,51 +21,75 @@
 ;;   World Update
 ;; ****************
 
-(define (update-ant! a g w)
-  ;; HF = has food, SF = sense food, SP = sense phermn, AH = at home
-  (let ([currcell (get-cell (world-cells w) (pt-x (ant-pt a)) (pt-y (ant-pt a)))]
-        [adj-phermn-cells (adj-phermn-cells (ant-pt a) (world-cells w) (grid-ncells g))])
-    (cond 
-      [(and (ant-has-food a) (equal? (ant-pt a) (world-home w)))        ; If HF and AH, drop food and move away
-       (inc-home-food! w)
-       (set-ant-has-food! a #f)]
-      [(and (ant-has-food a) (not (equal? (ant-pt a) (world-home w))))  ; Else if HF and ~AH, drop phermn and move away
-       (drop-phermn! a g w *drop-amt*)
-       (set-ant-pt! a (gohome (ant-pt a) (world-home w)))]
-      [(and (not (ant-has-food a)) (not (null? (cell-food currcell))))  ; Else if ~HF and SF, pick up food and go home
-       (if (>= 1 (cell-food currcell))
-         (set-cell-food! currcell null)
-         (set-cell-food! currcell (- (cell-food currcell) 1)))
-       (set-ant-has-food! a #t)]
-      [(and (not (ant-has-food a)) (not (null? adj-phermn-cells)))      ; Else if ~HF and SP, move to next position along trail (away from home)
-       (let ([farther-pts 
-               (filter (lambda (x) (> (distance (cell-pt x) (world-home w))
-                                      (distance (ant-pt a) (world-home w)))) 
-                       adj-phermn-cells)])
-         (if (null? farther-pts)
-           (set-ant-pt! a (random-move (ant-pt a) (grid-ncells g)))
-           (set-ant-pt! a (cell-pt (argmax (lambda (x) (cell-phermn x)) farther-pts)))))]
+(define (update-ant! with-phermn) 
+  (lambda (a g w)
+    ;; HF = has food, SF = sense food, SP = sense phermn, AH = at home
+    (let ([currcell (get-cell (world-cells w) (pt-x (ant-pt a)) (pt-y (ant-pt a)))]
+          [adj-phermn-cells (adj-phermn-cells (ant-pt a) (world-cells w) (grid-ncells g))])
+      (cond 
+        [(and (ant-has-food a) (equal? (ant-pt a) (world-home w)))        ; If HF and AH, drop food and move away
+         (inc-home-food! w)
+         (set-ant-has-food! a #f)]
+        [(and (ant-has-food a) (not (equal? (ant-pt a) (world-home w))))  ; Else if HF and ~AH, drop phermn and move away
+         (when with-phermn (drop-phermn! a g w *drop-amt*))
+         (set-ant-pt! a (gohome (ant-pt a) (world-home w)))]
+        [(and (not (ant-has-food a)) (not (null? (cell-food currcell))))  ; Else if ~HF and SF, pick up food and go home
+         (if (>= 1 (cell-food currcell))
+           (set-cell-food! currcell null)
+           (set-cell-food! currcell (- (cell-food currcell) 1)))
+         (set-ant-has-food! a #t)]
+        [(and (not (ant-has-food a)) (not (null? adj-phermn-cells)))      ; Else if ~HF and SP, move to next position along trail (away from home)
+         (let ([farther-pts 
+                 (filter (lambda (x) (> (distance (cell-pt x) (world-home w))
+                                        (distance (ant-pt a) (world-home w)))) 
+                         adj-phermn-cells)])
+           (if (null? farther-pts)
+             (set-ant-pt! a (random-move (ant-pt a) (grid-ncells g)))
+             (set-ant-pt! a (cell-pt (argmax (lambda (x) (cell-phermn x)) farther-pts)))))]
 
-      [else  ; Else move random
-        (set-ant-pt! a (random-move (ant-pt a) (grid-ncells g)))])))
+        [else  ; Else move random
+          (set-ant-pt! a (random-move (ant-pt a) (grid-ncells g)))]))))
 
 ;; *****************
 ;;       GUI
 ;; *****************
 
-(define (main-loop grid w)
+(define (main-loop with-phermn grid w)
   (when (> (current-milliseconds) *next-timestamp*)
     (draw-world (window-canvas *window*) grid *current-world* -1)
     (set! *next-timestamp* (+ *fps* (current-milliseconds)))
     (when (not *gui-pause*)
-      (set! *current-world* (update-world! grid *current-world* *decay-amt* update-ant!))))
+      (set! *current-world* (update-world! grid *current-world* *decay-amt* (update-ant! with-phermn)))))
   (main-loop grid w))
+
+(define (main-loop-with-iters with-phermn iters grid w)
+  (if (<= iters 0)
+    (world-food-at-home w)
+    (begin 
+      (set! *current-world* (update-world! grid *current-world* *decay-amt* (update-ant! with-phermn)))
+      (main-loop-with-iters with-phermn (sub1 iters) grid w))))
 
 (define (start-colony)
   (let* ([homept (/ (grid-ncells *grid*) 2)]
          [w (blank-world *nants* homept (grid-ncells *grid*) *max-amt*)])
     (set! *current-world* (copy-world w))
-    (main-loop *grid* *current-world*)))
+    (main-loop #t *grid* *current-world*)))
+
+(define (start-colony-comparison)
+  (let* ([homept (/ (grid-ncells *grid*) 2)]
+         [w (blank-world *nants* homept (grid-ncells *grid*) *max-amt*)])
+    (place-food! *nfood* *food-amt* (grid-ncells *grid*) (world-cells w))
+    (for ([nants (list 10 20 30 40 50 60 70 80 90)])
+         (for ([drop-amt (list 3 5 7 9 11)])
+              (for ([decay-amt (list 3 5 7 9 11)])
+                   (for ([use-phermn (list #t #f)])
+                        (set! *current-world* (copy-world w))
+                        (set-drop-amt! drop-amt)
+                        (set-decay-amt! decay-amt)
+                        (reset-ants! *current-world* nants)
+                        (let ([rlt (main-loop-with-iters use-phermn 500 *grid* *current-world*)])
+                          (printf "fit ~a | relfit ~a | nants: ~a | use-phermn ~a | drop-amt ~a | decay-amt ~a\n" 
+                                  rlt (exact->inexact (/ rlt nants)) nants use-phermn drop-amt decay-amt))))))))
 
 (define (new-world-with-food)
   (let* ([homept (/ (grid-ncells *grid*) 2)]
@@ -76,7 +100,7 @@
 (define (new-run-thread paused)
   (if (thread? *gui-thread*) (kill-thread *gui-thread*) null)
   (set! *gui-pause* paused)
-  (set! *gui-thread* (thread start-colony)))
+  (set! *gui-thread* (thread start-colony-comparison)))
 
 (define (main)
   (let* ([app-window (create-window 

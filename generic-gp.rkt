@@ -199,12 +199,24 @@
                ['R (leaf (random))]
                [a  (leaf a)]))))
 
+  (define (intialize-sub-pop method n maxdepth)
+    (define (loop n acc-dict)
+      (if (= n 0)
+        (map car (hash->list acc-dict))
+        (let ([candidate (method 0 maxdepth)])
+          (if (hash-has-key? acc-dict candidate)
+            (loop n acc-dict) ; To ensure diversity in the initial population, skip any duplicates
+            (loop (- n 1) (hash-set acc-dict candidate null))))))
+    (loop n (make-immutable-hash '()))) ; Initialize all individuals
+
   (define (ramped-half-and-half popsize)
     (let ([count (/ (/ popsize (- (add1 max-init-tree-height) 2)) 2)])
       (apply append
              (map (lambda (maxdepth)
-                    (append (map (lambda (x) (full 0 maxdepth)) (range 0 count))
-                            (map (lambda (x) (grow 0 maxdepth)) (range 0 count))))
+                    (append (intialize-sub-pop grow count maxdepth)
+                            (intialize-sub-pop full count maxdepth)))
+                    ;(append (map (lambda (x) (full 0 maxdepth)) (range 0 count))
+                    ;        (map (lambda (x) (grow 0 maxdepth)) (range 0 count))))
                   (range 2 (add1 max-init-tree-height))))))
 
   (define (crossover p1 p2)
@@ -244,5 +256,6 @@
         (loop (add1 iter) new-best (cons (cadr new-best) (create-next-generation %mutation fpop popsize tourny-size))))))
 
   (let* ([initial-population (ramped-half-and-half popsize)])
+    (displayln (length initial-population))
     (loop 1 null initial-population)))
 
