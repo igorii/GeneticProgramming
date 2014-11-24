@@ -247,13 +247,15 @@
       last-best
       (let* ([fits (map calc-fitness last-pop)]
              [fpop (map list fits last-pop)]
-             [curr-best (get-best fpop)];(argmin (lambda (x) (car x)) fpop)]
+             [curr-best (get-best fpop)]
              [new-best (if (or (null? last-best) 
                                (better? last-best curr-best)) 
                          curr-best 
                          last-best)])
         (callback (car new-best) (cadr new-best) iter)
-        (loop (add1 iter) new-best (cons (cadr new-best) (create-next-generation %mutation fpop popsize tourny-size))))))
+        (if (and minimizing (>= 0 (car new-best)))
+          new-best
+          (loop (add1 iter) new-best (cons (cadr new-best) (create-next-generation %mutation fpop popsize tourny-size)))))))
 
   (let* ([initial-population (ramped-half-and-half popsize)])
     (displayln (length initial-population))

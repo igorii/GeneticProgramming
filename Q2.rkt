@@ -19,21 +19,21 @@
     (let ([t (expt a b)])
       (if (not (complex? t)) t 1))))
 
-(define *pop-size* 500)
+;; Target Functions
+;(define *target* (lambda (x) (+ 1 (+ x (+ (expt (* 2 x) 2) (expt (* 3 x) 3))))))
+(define *target* (lambda (x) (+ (cos x) (* 3 (sin (expt x 2))))))
+
+(define *pop-size* 1000)
 (define *success* 20)
 (define *precision* 0.001)
 (define *max-generations* 51)
-(define *%crossover* 0.9)
 (define *%mutation* 0.05)
-(define *%reproduction* 0.09)
-(define *%crossover-point* 0.9)
 (define *max-init-program-size* 6)
 (define *max-run-program-size* 17)
 (define *tourny-size* 7)
-(define *elitism* #t)
-(define *terminals* (list 'x 'R))
 (define *nfitcases* 100)
 
+(define *terminals*  (list 'x 'R))
 (define *func-table* (list (gp:fn 'add 2 r-add)
                            (gp:fn 'sub 2 r-sub)
                            (gp:fn 'mul 2 r-mul)
@@ -46,7 +46,7 @@
 (define (create-fitness-cases fn minp maxp n)
   (map (lambda (x) (fitcase x (fn x)))
        (map (lambda (x) (+ minp (* (- maxp minp) (/ x n))))
-            (range 0 (+ n 1)))))
+            (range 0 n))))
 
 (define (calc-fit-diffs fitcases symtree ftable)
   (map (lambda (x)
@@ -55,14 +55,19 @@
                     (sqr (- (fitcase-output x) rslt)))))
        fitcases))
 
-(define (calc-fitness-from-diffs fitdiffs nfitcases)
-  (let ([sum (foldl + 0 (map (lambda (x) (fitcase-output x)) fitdiffs))])
-    (sqrt (/ sum nfitcases))))
+(define (calc-fitness-from-diffs fitdiffs nfitcases successes precision)
+  ;; If we've passed the correct number of cases, just return 0, otherwise
+  ;; get the normalized difference
+  (let ([npassed (length (filter (lambda (x) (< x precision)) (map fitcase-output fitdiffs)))])
+    (if (<= successes npassed)
+      0
+      (let ([sum (foldl + 0 (map (lambda (x) (fitcase-output x)) fitdiffs))])
+        (sqrt (/ sum nfitcases))))))
 
-(define (make-fitness-fn fn ftable xmin xmax nfitcases)
+(define (make-fitness-fn fn ftable xmin xmax nfitcases successes precision)
   (let* ([fitcases (create-fitness-cases fn xmin xmax nfitcases)])
     (lambda (program)
-      (calc-fitness-from-diffs (calc-fit-diffs fitcases program ftable) nfitcases))))
+      (calc-fitness-from-diffs (calc-fit-diffs fitcases program ftable) nfitcases successes precision))))
 
 (define eval-form
   (let ((ns (make-base-namespace)))
@@ -80,18 +85,16 @@
                    xmin xmax height width fit)))
 
 (define (start-regression)
-  (let* (;[fn (lambda (x) (+ 1 (+ x (+ (expt (* 2 x) 2) (expt (* 3 x) 3)))))])
-         [fn (lambda (x) (+ (cos x) (* 3 (sin (expt x 2)))))])
-    (gp:generic-gp
-      #:population-size *pop-size*
-      #:max-init-tree-height *max-init-program-size*
-      #:max-run-tree-height *max-run-program-size*
-      #:function-table *func-table*
-      #:terminals *terminals*
-      #:mutation-rate *%mutation*
-      #:tournament-size *tourny-size*
-      #:fitness-fn (make-fitness-fn fn *func-table* -5 5 *nfitcases*)
-      #:callback (make-callback fn -5 5 600 600 *func-table*))))
+  (gp:generic-gp
+    #:population-size *pop-size*
+    #:max-init-tree-height *max-init-program-size*
+    #:max-run-tree-height *max-run-program-size*
+    #:function-table *func-table*
+    #:terminals *terminals*
+    #:mutation-rate *%mutation*
+    #:tournament-size *tourny-size*
+    #:fitness-fn (make-fitness-fn *target* *func-table* -5 5 *nfitcases* *success* *precision*)
+    #:callback (make-callback *target* -5 5 600 600 *func-table*)))
 
 (define *window* null)
 (define (main)
